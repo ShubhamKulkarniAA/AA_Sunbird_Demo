@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Sunbird-ED Installer
 
 ## Installing Sunbird on Any Cloud Provider
@@ -83,3 +84,6 @@ This installation setup creates the following default users with different roles
 ```bash
 cd terraform/<cloud-provider>/<env>
 time ./install.sh destroy_tf_resources
+=======
+# AA_Sunbird_Demo
+>>>>>>> 259263041cadd248779fd55fae0bdb71ffe0e20e
