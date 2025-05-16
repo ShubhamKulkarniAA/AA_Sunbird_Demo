@@ -1,0 +1,36 @@
+global:
+  env: ${env}
+  environment: ${environment}
+  building_block: ${building_block}
+  cloud_storage_access_key: ${azure_storage_account_name}
+  cloud_storage_secret_key: ${azure_storage_account_key}
+  public_container_name: ${azure_public_container_name}
+  private_container_name: ${azure_private_container_name}
+  dial_state_container_public: ${azure_dial_state_container_name}
+  private_ingressgateway_ip: ${private_ingressgateway_ip}
+  encryption__string: ${encryption_string}
+  random_string: ${random_string}
+  object_storage_endpoint: ${azure_storage_account_name}.blob.core.windows.net
+
+
+
+velero:
+  enabled: true
+  credentials:
+    useSecret: true
+    secretContents:
+      cloud: |
+        AZURE_STORAGE_ACCOUNT_NAME: ${azure_storage_account_name}
+        AZURE_STORAGE_ACCOUNT_KEY: ${azure_storage_account_key}
+  configuration:
+    backupStorageLocation:
+      - name: default
+        provider: "azure"
+        bucket: ${azure_public_container_name}/backups
+        config:
+          storageAccount: ${azure_storage_account_name}
+          storageAccountKeyEnvVar: AZURE_STORAGE_ACCOUNT_KEY
+nginx-public-ingress:
+  commonAnnotations:
+    reloader.stakater.com/auto: "true"
+    service.beta.kubernetes.io/azure-load-balancer-external: "true"                     
