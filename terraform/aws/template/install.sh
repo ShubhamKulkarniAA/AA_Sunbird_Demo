@@ -100,37 +100,47 @@ function certificate_config() {
 
 }
 function install_component() {
+    # Verify helm is installed
+    if ! command -v helm &> /dev/null; then
+        echo "❌ Helm is not installed or not found in PATH. Please install Helm before proceeding."
+        exit 1
+    fi
+
     # We need a dummy cm for configmap to start. Later Lernbb will create real one
     kubectl create configmap keycloak-key -n sunbird 2>/dev/null || true
     local current_directory="$(pwd)"
-    if [ "$(basename $current_directory)" != "helmcharts" ]; then
+    if [ "$(basename "$current_directory")" != "helmcharts" ]; then
         cd ../../../helmcharts 2>/dev/null || true
     fi
+
     local component="$1"
     kubectl create namespace sunbird 2>/dev/null || true
     kubectl create namespace velero 2>/dev/null || true
     echo -e "\nInstalling $component"
+
     local ed_values_flag=""
     if [ -f "$component/ed-values.yaml" ]; then
         ed_values_flag="-f $component/ed-values.yaml --wait --wait-for-jobs"
     fi
+
     ### Generate the key pair required for certificate template
-      if [ $component = "learnbb" ]; then
+    if [ "$component" = "learnbb" ]; then
         if kubectl get job keycloak-kids-keys -n sunbird >/dev/null 2>&1; then
             echo "Deleting existing job keycloak-kids-keys..."
             kubectl delete job keycloak-kids-keys -n sunbird
         fi
 
         if [ -f "certkey.pem" ] && [ -f "certpubkey.pem" ]; then
-            echo "Certificate keys are already created. Skipping the keys creation..."
+            echo "✅ Certificate keys are already created. Skipping the keys creation..."
         else
             certificate_keys
         fi
-      fi
+    fi
+
     helm upgrade --install "$component" "$component" --namespace sunbird -f "$component/values.yaml" \
         $ed_values_flag \
-        -f "../terraform/azure/$environment/global-values.yaml" \
-        -f "../terraform/azure/$environment/global-cloud-values.yaml" --timeout 30m --debug
+        -f "../terraform/aws/$environment/global-values.yaml" \
+        -f "../terraform/aws/$environment/global-cloud-values.yaml" --timeout 30m --debug
 }
 
 function install_helm_components() {
