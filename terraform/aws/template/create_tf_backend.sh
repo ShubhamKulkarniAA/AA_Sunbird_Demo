@@ -53,7 +53,7 @@ echo "aws_account: $aws_account"
 # az storage account create --resource-group "$RESOURCE_GROUP_NAME" \
 #   --name "$S3_BUCKET_NAME" --sku Standard_LRS --encryption-services blob
 
-Create the blob container
+# Create the blob container
 aws s3api create-bucket --bucket "$S3BUCKET_NAME" --region "$cloud_storage_region"
 
 
