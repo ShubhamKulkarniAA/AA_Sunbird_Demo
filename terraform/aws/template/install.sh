@@ -56,11 +56,18 @@ function backup_configs() {
 function create_tf_resources() {
     source tf.sh
     echo -e "\nCreating resources on aws cloud"
+
+    # Navigate to the directory where Terraform configs actually exist
+    MODULES_DIR="$(dirname "$0")/../modules"
+    cd "$MODULES_DIR" || { echo "❌ Cannot find Terraform modules directory"; exit 1; }
+
     terraform init -upgrade
     # terragrunt init -upgrade
     # terragrunt run-all apply --terragrunt-non-interactive
-    chmod 600 ~/.kube/config
+
+    [ -f ~/.kube/config ] && chmod 600 ~/.kube/config || echo "⚠️  ~/.kube/config not found, skipping chmod"
 }
+
 function certificate_keys() {
     # Generate private and public keys using openssl
     echo "Creation of RSA keys for certificate signing"
