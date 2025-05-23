@@ -13,6 +13,18 @@ function create_tf_backend() {
     bash create_tf_backend.sh
 }
 
+# Install Terraform if not already installed or if outdated
+if ! command -v terraform &> /dev/null || [[ "$(terraform version -json | jq -r '.terraform_version')" != "1.8.4" ]]; then
+    echo "Installing Terraform 1.8.4..."
+    sudo apt-get update && sudo apt-get install -y wget unzip jq
+    wget https://releases.hashicorp.com/terraform/1.8.4/terraform_1.8.4_linux_amd64.zip
+    unzip terraform_1.8.4_linux_amd64.zip
+    sudo mv terraform /usr/local/bin/
+    rm terraform_1.8.4_linux_amd64.zip
+else
+    echo "Terraform 1.8.4 is already installed."
+fi
+
 function backup_configs() {
     timestamp=$(date +%d%m%y_%H%M%S)
     echo -e "\nBackup existing config files if they exist"
