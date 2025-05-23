@@ -61,7 +61,7 @@ echo "export AWS_REGION=$AWS_REGION" > tf.sh
 echo "export AWS_TERRAFORM_BACKEND_BUCKET=$S3_BUCKET_NAME" >> tf.sh
 echo "export AWS_TERRAFORM_BACKEND_KEY=$TERRAFORM_STATE_KEY" >> tf.sh
 echo "export AWS_PROFILE=$AWS_PROFILE" >> tf.sh  # Optional, if using named profiles
-echo "export AWS_SUBSCRIPTION_ID=$aws_account" >> tf.sh  # <-- Added Subscription ID export
+echo "export AWS_ACCOUNT_ID=$aws_account" >> tf.sh  # <-- Added Subscription ID export
 
 echo -e "\nTerraform backend setup complete!"
 echo -e "Run the following command to set the environment variables:"
