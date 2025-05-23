@@ -1,5 +1,5 @@
 module "vpc" {
-  source = "./terraform/aws/modules/vpc"
+  source = "./network"
 
   vpc_cidr             = var.vpc_cidr
   public_subnet_cidr_1 = var.public_subnet_cidr_1
@@ -9,7 +9,7 @@ module "vpc" {
 }
 
 module "eks" {
-  source = "./terraform/aws/modules/eks"
+  source = "./eks"
 
   eks_cluster_name  = var.eks_cluster_name
   subnet_ids        = module.vpc.public_subnet_ids
@@ -22,7 +22,7 @@ module "eks" {
 }
 
 module "s3_bucket" {
-  source = "./terraform/aws/modules/s3"
+  source = "./storage"
 
   bucket_name       = var.s3_bucket_name
   environment       = var.environment
