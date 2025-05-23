@@ -37,7 +37,7 @@ echo "AWS Account ID: $aws_account"
 
 # Construct resource names
 RESOURCE_GROUP_NAME="${building_block}-${environment_name}"
-S3_BUCKET_NAME="${environment_name}tfstatesunbirdaa"
+S3_BUCKET_NAME="${environment_name}tfstatesunbird"
 CONTAINER_NAME="${environment_name}tfstatesunbird"
 
 # Debugging: Print generated names
@@ -68,6 +68,7 @@ fi
 # Generate tf.sh to export env vars
 echo "export AWS_REGION=$location" > tf.sh
 echo "export AWS_TERRAFORM_BACKEND_BUCKET=$S3_BUCKET_NAME" >> tf.sh
+export TERRAFORM_STATE_KEY="${environment_name}/terraform.tfstate"
 echo "export AWS_TERRAFORM_BACKEND_KEY=$TERRAFORM_STATE_KEY" >> tf.sh
 echo "export AWS_PROFILE=${AWS_PROFILE:-default}" >> tf.sh
 echo "export AWS_ACCOUNT_ID=$aws_account" >> tf.sh
