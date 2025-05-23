@@ -32,7 +32,7 @@ echo "Extracted environment_name: \"$environment_name\""
 # ID=$(az account show | jq -r .tenantId | cut -d '-' -f1)
 
 # Get Azure Subscription ID
-aws_account= $(aws sts get-caller-identity --query "Account" --output text)
+aws_account= $(aws sts get-caller-identity --query | jq -r .tenantId | cut -d '-' -f1 )
 
 # Construct resource names
 RESOURCE_GROUP_NAME="${building_block}-${environment_name}"
