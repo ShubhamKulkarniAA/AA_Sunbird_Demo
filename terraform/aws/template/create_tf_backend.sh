@@ -29,7 +29,7 @@ echo "Extracted building_block: \"$building_block\""
 echo "Extracted environment_name: \"$environment_name\""
 
 # Get Azure tenant ID (first segment of the Tenant ID)
-ID=$(az account show | jq -r .tenantId | cut -d '-' -f1)
+# ID=$(az account show | jq -r .tenantId | cut -d '-' -f1)
 
 # Get Azure Subscription ID
 aws_account= $(aws sts get-caller-identity --query "Account" --output text)
