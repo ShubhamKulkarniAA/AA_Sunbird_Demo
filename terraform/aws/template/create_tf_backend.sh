@@ -38,7 +38,7 @@ echo "AWS Account ID: $aws_account"
 # Construct resource names
 RESOURCE_GROUP_NAME="${building_block}-${environment_name}"
 S3_BUCKET_NAME="${environment_name}tfstate"
-CONTAINER_NAME="${environment_name}tfstate"
+CONTAINER_NAME="${environment_name}tfstatesunbird"
 
 # Debugging: Print generated names
 echo "RESOURCE_GROUP_NAME: $RESOURCE_GROUP_NAME"
@@ -47,14 +47,15 @@ echo "CONTAINER_NAME: $CONTAINER_NAME"
 echo "aws_account: $aws_account"
 
 # Create resource group
-az group create --name "$RESOURCE_GROUP_NAME" --location "$location"
+# az group create --name "$RESOURCE_GROUP_NAME" --location "$location"
 
 # Create the storage account
-az storage account create --resource-group "$RESOURCE_GROUP_NAME" \
-  --name "$S3_BUCKET_NAME" --sku Standard_LRS --encryption-services blob
+# az storage account create --resource-group "$RESOURCE_GROUP_NAME" \
+#   --name "$S3_BUCKET_NAME" --sku Standard_LRS --encryption-services blob
 
-# Create the blob container
-az storage container create --name "$CONTAINER_NAME" --account-name "$S3_BUCKET_NAME"
+Create the blob container
+aws s3api create-bucket --bucket "$S3BUCKET_NAME" --region "$cloud_storage_region"
+
 
 # Export Terraform backend details to a file
 echo "export AZURE_TERRAFORM_BACKEND_RG=$RESOURCE_GROUP_NAME" > tf.sh
