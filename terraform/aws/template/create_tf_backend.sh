@@ -32,7 +32,7 @@ echo "Extracted environment_name: \"$environment_name\""
 ID=$(az account show | jq -r .tenantId | cut -d '-' -f1)
 
 # Get Azure Subscription ID
-SUBSCRIPTION_ID=$(az account show | jq -r .id)
+aws_account= $(aws sts get-caller-identity --query "Account" --output text)
 
 # Construct resource names
 RESOURCE_GROUP_NAME="${building_block}-${environment_name}"
@@ -43,7 +43,7 @@ CONTAINER_NAME="${environment_name}tfstate"
 echo "RESOURCE_GROUP_NAME: $RESOURCE_GROUP_NAME"
 echo "STORAGE_ACCOUNT_NAME: $STORAGE_ACCOUNT_NAME"
 echo "CONTAINER_NAME: $CONTAINER_NAME"
-echo "SUBSCRIPTION_ID: $SUBSCRIPTION_ID"
+echo "aws_account: $aws_account"
 
 # Create resource group
 az group create --name "$RESOURCE_GROUP_NAME" --location "$location"
@@ -59,7 +59,7 @@ az storage container create --name "$CONTAINER_NAME" --account-name "$STORAGE_AC
 echo "export AZURE_TERRAFORM_BACKEND_RG=$RESOURCE_GROUP_NAME" > tf.sh
 echo "export AZURE_TERRAFORM_BACKEND_STORAGE_ACCOUNT=$STORAGE_ACCOUNT_NAME" >> tf.sh
 echo "export AZURE_TERRAFORM_BACKEND_CONTAINER=$CONTAINER_NAME" >> tf.sh
-echo "export AZURE_SUBSCRIPTION_ID=$SUBSCRIPTION_ID" >> tf.sh  # <-- Added Subscription ID export
+echo "export AWS_SUBSCRIPTION_ID=$aws_account" >> tf.sh  # <-- Added Subscription ID export
 
 echo -e "\nTerraform backend setup complete!"
 echo -e "Run the following command to set the environment variables:"

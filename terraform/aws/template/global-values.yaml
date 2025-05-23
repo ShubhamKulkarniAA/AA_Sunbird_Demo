@@ -1,10 +1,10 @@
 global:
-  building_block: "" # building block name
-  env: ""
-  environment: "" # use lowercase alphanumeric string between 1-9 characters
+  building_block: "sunbirdedAA" # building block name
+  env: "demo"
+  environment: "demo" # use lowercase alphanumeric string between 1-9 characters
   release_version: release-7.0.0
-  domain: ""
-  subscription_id: ""
+  domain: "sunbird.alignedautomation.com"
+  aws_account: "339712817291"
   cloud_storage_region: "ap-south-1"
   sunbird_cloud_storage_provider: "aws" # Provide the cloud storage provider
   checkpoint_store_type: "aws"
