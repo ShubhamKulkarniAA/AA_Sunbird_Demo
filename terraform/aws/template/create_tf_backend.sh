@@ -37,7 +37,7 @@ echo "AWS Account ID: $aws_account"
 
 # Construct resource names
 RESOURCE_GROUP_NAME="${building_block}-${environment_name}"
-S3_BUCKET_NAME="${environment_name}tfstatesunbirdAA"
+S3_BUCKET_NAME="${environment_name}tfstatesunbirdaa"
 CONTAINER_NAME="${environment_name}tfstatesunbird"
 
 # Debugging: Print generated names
@@ -53,16 +53,25 @@ echo "aws_account: $aws_account"
 # az storage account create --resource-group "$RESOURCE_GROUP_NAME" \
 #   --name "$S3_BUCKET_NAME" --sku Standard_LRS --encryption-services blob
 
-# Create the blob container
-aws s3api create-bucket --bucket "$S3_BUCKET_NAME" --region ap-south-1 --create-bucket-configuration LocationConstraint=ap-south-1
+# Create the s3 bucket
+if aws s3api head-bucket --bucket "$S3_BUCKET_NAME" 2>/dev/null; then
+  echo "✅ S3 bucket \"$S3_BUCKET_NAME\" already exists. Skipping creation."
+else
+  echo "⏳ Creating S3 bucket \"$S3_BUCKET_NAME\" in region \"$location\"..."
+  aws s3api create-bucket \
+    --bucket "$S3_BUCKET_NAME" \
+    --region "$location" \
+    --create-bucket-configuration LocationConstraint="$location"
+  echo "✅ Bucket created successfully."
+fi
 
-
-echo "export AWS_REGION=$AWS_REGION" > tf.sh
+# Generate tf.sh to export env vars
+echo "export AWS_REGION=$location" > tf.sh
 echo "export AWS_TERRAFORM_BACKEND_BUCKET=$S3_BUCKET_NAME" >> tf.sh
 echo "export AWS_TERRAFORM_BACKEND_KEY=$TERRAFORM_STATE_KEY" >> tf.sh
-echo "export AWS_PROFILE=$AWS_PROFILE" >> tf.sh  # Optional, if using named profiles
-echo "export AWS_ACCOUNT_ID=$aws_account" >> tf.sh  # <-- Added Subscription ID export
+echo "export AWS_PROFILE=${AWS_PROFILE:-default}" >> tf.sh
+echo "export AWS_ACCOUNT_ID=$aws_account" >> tf.sh
 
-echo -e "\nTerraform backend setup complete!"
-echo -e "Run the following command to set the environment variables:"
+echo -e "\n✅ Terraform backend setup complete!"
+echo -e "👉 Run the following command to set the environment variables:"
 echo "source tf.sh"
