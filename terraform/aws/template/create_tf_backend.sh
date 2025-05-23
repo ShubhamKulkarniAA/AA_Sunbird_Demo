@@ -54,7 +54,7 @@ echo "aws_account: $aws_account"
 #   --name "$S3_BUCKET_NAME" --sku Standard_LRS --encryption-services blob
 
 # Create the blob container
-aws s3api create-bucket --bucket "$S3_BUCKET_NAME" --region "$cloud_storage_region"
+aws s3api create-bucket --bucket "$S3_BUCKET_NAME" --region ap-south-1
 
 
 # Export Terraform backend details to a file
