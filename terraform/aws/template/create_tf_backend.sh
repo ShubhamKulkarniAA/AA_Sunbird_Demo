@@ -54,7 +54,7 @@ echo "aws_account: $aws_account"
 #   --name "$S3_BUCKET_NAME" --sku Standard_LRS --encryption-services blob
 
 # Create the blob container
-aws s3api create-bucket --bucket ""$S3_BUCKET_NAME" --region ap-south-1 --create-bucket-configuration LocationConstraint=ap-south-1
+aws s3api create-bucket --bucket "$S3_BUCKET_NAME" --region ap-south-1 --create-bucket-configuration LocationConstraint=ap-south-1
 
 
 echo "export AWS_REGION=$AWS_REGION" > tf.sh
