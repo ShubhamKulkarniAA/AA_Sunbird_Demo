@@ -37,7 +37,7 @@ echo "AWS Account ID: $aws_account"
 
 # Construct resource names
 RESOURCE_GROUP_NAME="${building_block}-${environment_name}"
-STORAGE_ACCOUNT_NAME="${environment_name}tfstate$ID"
+S3_BUCKET_NAME="${environment_name}tfstate"
 CONTAINER_NAME="${environment_name}tfstate"
 
 # Debugging: Print generated names
