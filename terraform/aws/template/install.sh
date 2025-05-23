@@ -27,11 +27,29 @@ fi
 
 function backup_configs() {
     timestamp=$(date +%d%m%y_%H%M%S)
-    echo -e "\nBackup existing config files if they exist"
+    echo -e "\n🔄 Backup existing config files if they exist"
+
+    # Ensure .kube and .config/rclone directories exist
     mkdir -p ~/.kube
-    mv ~/.kube/config ~/.kube/config.$timestamp || true
     mkdir -p ~/.config/rclone
-    mv ~/.config/rclone/rclone.conf ~/.config/rclone/rclone.conf.$timestamp || true
+
+    # Backup kube config if it exists
+    if [ -f ~/.kube/config ]; then
+        mv ~/.kube/config ~/.kube/config.$timestamp
+        echo "✅ Backed up ~/.kube/config to ~/.kube/config.$timestamp"
+    else
+        echo "⚠️  ~/.kube/config not found, skipping backup"
+    fi
+
+    # Backup rclone config if it exists
+    if [ -f ~/.config/rclone/rclone.conf ]; then
+        mv ~/.config/rclone/rclone.conf ~/.config/rclone/rclone.conf.$timestamp
+        echo "✅ Backed up ~/.config/rclone/rclone.conf to ~/.config/rclone/rclone.conf.$timestamp"
+    else
+        echo "⚠️  ~/.config/rclone/rclone.conf not found, skipping backup"
+    fi
+
+    # Export KUBECONFIG
     export KUBECONFIG=~/.kube/config
 }
 
