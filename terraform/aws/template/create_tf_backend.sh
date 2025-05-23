@@ -42,7 +42,7 @@ CONTAINER_NAME="${environment_name}tfstate"
 
 # Debugging: Print generated names
 echo "RESOURCE_GROUP_NAME: $RESOURCE_GROUP_NAME"
-echo "STORAGE_ACCOUNT_NAME: $STORAGE_ACCOUNT_NAME"
+echo "S3_BUCKET_NAME: $S3_BUCKET_NAME"
 echo "CONTAINER_NAME: $CONTAINER_NAME"
 echo "aws_account: $aws_account"
 
@@ -51,14 +51,14 @@ az group create --name "$RESOURCE_GROUP_NAME" --location "$location"
 
 # Create the storage account
 az storage account create --resource-group "$RESOURCE_GROUP_NAME" \
-  --name "$STORAGE_ACCOUNT_NAME" --sku Standard_LRS --encryption-services blob
+  --name "$S3_BUCKET_NAME" --sku Standard_LRS --encryption-services blob
 
 # Create the blob container
-az storage container create --name "$CONTAINER_NAME" --account-name "$STORAGE_ACCOUNT_NAME"
+az storage container create --name "$CONTAINER_NAME" --account-name "$S3_BUCKET_NAME"
 
 # Export Terraform backend details to a file
 echo "export AZURE_TERRAFORM_BACKEND_RG=$RESOURCE_GROUP_NAME" > tf.sh
-echo "export AZURE_TERRAFORM_BACKEND_STORAGE_ACCOUNT=$STORAGE_ACCOUNT_NAME" >> tf.sh
+echo "export AZURE_TERRAFORM_BACKEND_STORAGE_ACCOUNT=$S3_BUCKET_NAME" >> tf.sh
 echo "export AZURE_TERRAFORM_BACKEND_CONTAINER=$CONTAINER_NAME" >> tf.sh
 echo "export AWS_SUBSCRIPTION_ID=$aws_account" >> tf.sh  # <-- Added Subscription ID export
 
