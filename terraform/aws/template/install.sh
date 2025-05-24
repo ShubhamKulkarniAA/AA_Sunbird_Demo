@@ -36,6 +36,12 @@ backup_configs() {
     export KUBECONFIG="$HOME/.kube/config"
 }
 
+# NEW FUNCTION: Clear terragrunt cache folders
+clear_terragrunt_cache() {
+    echo "Clearing Terragrunt cache folders..."
+    find . -type d -name ".terragrunt-cache" -exec rm -rf {} + || echo "No Terragrunt cache found or failed to delete"
+}
+
 create_tf_resources() {
     source tf.sh
     echo -e "\nCreating resources on AWS cloud..."
@@ -49,6 +55,8 @@ create_tf_resources() {
         echo "❌ terragrunt.hcl not found in $(pwd)"
         exit 1
     fi
+
+    clear_terragrunt_cache   # <-- Added here!
 
     terraform init -migrate-state
     terragrunt init -migrate-state
