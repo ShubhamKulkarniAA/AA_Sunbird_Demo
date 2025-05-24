@@ -45,9 +45,16 @@ function create_tf_resources() {
     source tf.sh
     echo -e "\nCreating resources on aws cloud"
 
-    # Navigate to the directory where Terraform configs actually exist
-    MODULES_DIR="$(dirname "$0")/../modules"
-    cd "$MODULES_DIR" || { echo "❌ Cannot find Terraform modules directory"; exit 1; }
+    # Navigate to the directory where terragrunt.hcl is actually located
+    TEMPLATE_DIR="$(dirname "$0")"
+    cd "$TEMPLATE_DIR" || { echo "❌ Cannot find template directory"; exit 1; }
+
+    echo "📁 Current working directory: $(pwd)"
+    echo "📄 Checking for terragrunt.hcl..."
+    if [ ! -f terragrunt.hcl ]; then
+        echo "❌ terragrunt.hcl not found in $(pwd)"
+        exit 1
+    fi
 
     terraform init -upgrade
     terragrunt init -upgrade
@@ -55,6 +62,7 @@ function create_tf_resources() {
 
     [ -f ~/.kube/config ] && chmod 600 ~/.kube/config || echo "⚠️  ~/.kube/config not found, skipping chmod"
 }
+
 
 function certificate_keys() {
     # Generate private and public keys using openssl
