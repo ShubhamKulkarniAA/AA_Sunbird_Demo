@@ -14,12 +14,13 @@ terraform {
 EOF
 }
 
-terraform {
-  extra_arguments "tfvars" {
-    commands  = ["apply", "plan", "destroy", "import"]
-    arguments = ["-var-file=${get_terragrunt_dir()}/modules/terraform.tfvars"]
-  }
-}
+# Commented out to avoid tfvars file not found error
+# terraform {
+#   extra_arguments "tfvars" {
+#     commands  = ["apply", "plan", "destroy", "import"]
+#     arguments = ["-var-file=${get_terragrunt_dir()}/modules/terraform.tfvars"]
+#   }
+# }
 
 inputs = {
   aws_region           = "ap-south-1"
@@ -29,13 +30,13 @@ inputs = {
   availability_zone_1  = "ap-south-1a"
   availability_zone_2  = "ap-south-1b"
 
-  eks_cluster_name  = "sunbirdedAA-demo-cluster"
-  cluster_role_name = "sunbirdedAA-demo-EKSClusterRole"
-  node_role_name    = "sunbirdedAA-demo-EKSNodeRole"
-  instance_type     = "t3.medium"
-  desired_size      = 1
-  max_size          = 1
-  min_size          = 1
+  eks_cluster_name     = "sunbirdedAA-demo-cluster"
+  cluster_role_name    = "sunbirdedAA-demo-EKSClusterRole"
+  node_role_name       = "sunbirdedAA-demo-EKSNodeRole"
+  instance_type        = "t3.medium"
+  desired_size         = 1
+  max_size             = 1
+  min_size             = 1
 
   s3_bucket_name       = "sunbirdedaa-demo-bucket"
   environment          = "demo"
