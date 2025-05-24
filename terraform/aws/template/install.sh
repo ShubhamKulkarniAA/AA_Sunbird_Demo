@@ -58,7 +58,7 @@ function create_tf_resources() {
 
     terraform init -upgrade
     terragrunt init -upgrade
-    terragrunt run-all apply --terragrunt-non-interactive
+    terragrunt apply --all
 
     [ -f ~/.kube/config ] && chmod 600 ~/.kube/config || echo "⚠️  ~/.kube/config not found, skipping chmod"
 }
