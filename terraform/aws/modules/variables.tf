@@ -1,74 +1,85 @@
-#VPC Variables
+variable "aws_region" {
+  description = "AWS region to deploy resources"
+  type        = string
+}
+
 variable "vpc_cidr" {
-  type = string
+  description = "CIDR block for the VPC"
+  type        = string
 }
 
 variable "public_subnet_cidr_1" {
-  type = string
+  description = "CIDR block for the first public subnet"
+  type        = string
 }
 
 variable "public_subnet_cidr_2" {
-  type = string
+  description = "CIDR block for the second public subnet"
+  type        = string
 }
 
 variable "availability_zone_1" {
-  type = string
+  description = "First availability zone"
+  type        = string
 }
 
 variable "availability_zone_2" {
-  type = string
+  description = "Second availability zone"
+  type        = string
 }
 
-#EKS Variables
 variable "eks_cluster_name" {
+  description = "EKS Cluster Name"
   type        = string
-  description = "Name of the EKS cluster"
+}
+
+variable "subnet_ids" {
+  description = "Subnet IDs for EKS worker nodes"
+  type        = list(string)
+  default     = []
 }
 
 variable "cluster_role_name" {
+  description = "IAM role name for EKS cluster"
   type        = string
-  description = "Name of the IAM role for the EKS cluster"
 }
 
 variable "node_role_name" {
+  description = "IAM role name for EKS nodes"
   type        = string
-  description = "Name of the IAM role for the EKS worker nodes"
 }
 
 variable "instance_type" {
+  description = "EC2 instance type for EKS worker nodes"
   type        = string
-  description = "Instance type for the EKS worker nodes"
 }
 
 variable "desired_size" {
+  description = "Desired number of EKS worker nodes"
   type        = number
-  description = "Desired number of worker nodes"
 }
 
 variable "max_size" {
+  description = "Maximum number of EKS worker nodes"
   type        = number
-  description = "Maximum number of worker nodes"
 }
 
 variable "min_size" {
+  description = "Minimum number of EKS worker nodes"
   type        = number
-  description = "Minimum number of worker nodes"
 }
 
-#S3 Variables
 variable "s3_bucket_name" {
+  description = "Name of the S3 bucket"
   type        = string
-  description = "The name of the S3 bucket"
 }
 
 variable "environment" {
+  description = "Environment (e.g. dev, staging, prod)"
   type        = string
-  description = "The environment the bucket belongs to (e.g., dev, staging, prod)"
-  default     = "default"
 }
 
 variable "s3_versioning_status" {
+  description = "S3 versioning status (Enabled or Suspended)"
   type        = string
-  description = "The versioning status of the S3 bucket (Enabled or Disabled)"
-  default     = "Disabled"
 }

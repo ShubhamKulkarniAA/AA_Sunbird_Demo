@@ -1,5 +1,13 @@
+provider "aws" {
+  region = var.aws_region
+}
+
 module "vpc" {
   source = "./network"
+
+  providers = {
+    aws = aws
+  }
 
   vpc_cidr             = var.vpc_cidr
   public_subnet_cidr_1 = var.public_subnet_cidr_1
@@ -10,6 +18,10 @@ module "vpc" {
 
 module "eks" {
   source = "./eks"
+
+  providers = {
+    aws = aws
+  }
 
   eks_cluster_name  = var.eks_cluster_name
   subnet_ids        = module.vpc.public_subnet_ids
@@ -23,6 +35,10 @@ module "eks" {
 
 module "s3_bucket" {
   source = "./storage"
+
+  providers = {
+    aws = aws
+  }
 
   bucket_name       = var.s3_bucket_name
   environment       = var.environment
