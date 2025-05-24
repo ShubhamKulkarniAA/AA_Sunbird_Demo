@@ -3,7 +3,7 @@ locals {
   environment     = local.global_vars.global.environment
   building_block  = local.global_vars.global.building_block
   aws_region      = local.global_vars.global.cloud_storage_region
-  bucket_name     = local.global_vars.global.s3_bucket_name
+  bucket_name     = local.global_vars.global.s3.bucket_name
   versioning_status = local.global_vars.global.s3.versioning_status
 
 }
