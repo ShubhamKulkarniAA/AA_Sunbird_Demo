@@ -30,9 +30,11 @@ inputs = {
   max_size                 = 1
   min_size                 = 1
 
-  s3_bucket_name           = "sunbirdedaa-demo-bucket"
+  bucket_name              = "sunbirdedaa-demo-bucket"
   storage_account_name     = "sunbirdedaa-demo-bucket"       # Same bucket for upload-files module
+  schemas_path             = "../modules/upload-files/schemas"
   storage_container_public = "public"                         # Public container/folder in bucket
   environment              = "demo"
   s3_versioning_status     = "Enabled"
+
 }
