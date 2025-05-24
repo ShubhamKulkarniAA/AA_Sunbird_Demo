@@ -1,7 +1,7 @@
 generate "backend" {
   path      = "backend.tf"
   if_exists = "overwrite_terragrunt"
-  contents = <<EOF
+  contents  = <<EOF
 terraform {
   backend "s3" {
     bucket         = "${get_env("AWS_TERRAFORM_BACKEND_BUCKET")}"
@@ -17,7 +17,8 @@ EOF
 terraform {
   extra_arguments "tfvars" {
     commands  = ["apply", "plan", "destroy", "import"]
-    arguments = ["-var-file=${get_terragrunt_dir()}/modules/terraform.tfvars"]
+    # Fix path: use relative path with ../modules/terraform.tfvars assuming terragrunt runs inside a child dir
+    arguments = ["-var-file=../modules/terraform.tfvars"]
   }
 }
 
