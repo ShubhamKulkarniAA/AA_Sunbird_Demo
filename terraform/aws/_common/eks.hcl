@@ -3,8 +3,8 @@ locals {
   environment       = local.global_vars.global.environment
   building_block    = local.global_vars.global.building_block
   region            = local.global_vars.global.cloud_storage_region
-  cluster_role_name = local.global_vars.global.cluster_role_name
-  node_role_name    = local.global_vars.global.node_role_name
+  cluster_role_name = local.global_vars.global.eks.cluster_role_name
+  node_role_name    = local.global_vars.global.eks.node_role_name
 }
 
 terraform {
