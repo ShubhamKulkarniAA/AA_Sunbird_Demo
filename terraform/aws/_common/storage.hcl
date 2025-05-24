@@ -1,13 +1,10 @@
 locals {
-  # This section will be enabled after final code is pushed and tagged
-  # source_base_url = "github.com/<org>/modules.git//app"
   global_vars     = yamldecode(file(find_in_parent_folders("global-values.yaml")))
   environment     = local.global_vars.global.environment
   building_block  = local.global_vars.global.building_block
-  aws_region      = local.global_vars.global.aws_region
+  aws_region      = local.global_vars.global.cloud_storage_region
 }
 
-# For local development
 terraform {
   source = "../../modules//storage/"
 }
