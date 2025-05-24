@@ -38,21 +38,21 @@ inputs = {
 }
 
 dependency "vpc" {
-  config_path = "./modules/vpc"
+  config_path = "../modules/network"
 }
 
 dependency "eks" {
-  config_path = "./modules/eks"
+  config_path = "../modules/eks"
 }
 
 dependency "keys" {
-  config_path = "./keys"
+  config_path = "../modules/keys"
 }
 
 dependency "upload_files" {
-  config_path = "./upload-files"
+  config_path = "../modules/upload-files"
 }
 
 dependency "output_file" {
-  config_path = "./output-file"
+  config_path = "../modules/output-file"
 }
