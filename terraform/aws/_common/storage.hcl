@@ -3,6 +3,9 @@ locals {
   environment     = local.global_vars.global.environment
   building_block  = local.global_vars.global.building_block
   aws_region      = local.global_vars.global.cloud_storage_region
+  bucket_name     = local.global_vars.global.s3_bucket_name
+  versioning_status = local.global_vars.global.s3.versioning_status
+
 }
 
 terraform {
@@ -21,7 +24,8 @@ inputs = {
   environment        = local.environment
   building_block     = local.building_block
   aws_region         = local.aws_region
-
+  bucket_name        = local.bucket_name
+  versioning_status  = local.versioning_status
   vpc_id             = dependency.network.outputs.vpc_id
   public_subnet_ids  = dependency.network.outputs.public_subnet_ids
 }

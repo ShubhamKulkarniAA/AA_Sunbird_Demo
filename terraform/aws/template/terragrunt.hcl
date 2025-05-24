@@ -14,14 +14,6 @@ terraform {
 EOF
 }
 
-# Commented out to avoid tfvars file not found error
-# terraform {
-#   extra_arguments "tfvars" {
-#     commands  = ["apply", "plan", "destroy", "import"]
-#     arguments = ["-var-file=${get_terragrunt_dir()}/modules/terraform.tfvars"]
-#   }
-# }
-
 inputs = {
   aws_region           = "ap-south-1"
   vpc_cidr             = "10.10.0.0/16"
