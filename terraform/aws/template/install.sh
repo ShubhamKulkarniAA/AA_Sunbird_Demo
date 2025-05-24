@@ -50,8 +50,8 @@ create_tf_resources() {
         exit 1
     fi
 
-    terraform init -reconfigure
-    terragrunt init -upgrade
+    terraform init -migrate-state
+    terragrunt init -migrate-state
     terragrunt apply --all -auto-approve --terragrunt-non-interactive
 
     if [[ -f ~/.kube/config ]]; then
