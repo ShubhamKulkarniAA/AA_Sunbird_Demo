@@ -59,7 +59,7 @@ resource "null_resource" "upload_global_jwt_values_yaml" {
   }
 
   provisioner "local-exec" {
-    command = "aws s3 cp ${local.global_values_jwt_file_location} s3://${var.s3_bucket_name}/${var.environment}-global-values-jwt-tokens.yaml --region ${var.aws_region}"
+    command = "aws s3 cp ${local.global_values_jwt_file_location} s3://${var.bucket_name}/${var.environment}-global-values-jwt-tokens.yaml --region ${var.aws_region}"
   }
 
   depends_on = [null_resource.generate_jwt_keys]
@@ -71,7 +71,7 @@ resource "null_resource" "upload_global_rsa_values_yaml" {
   }
 
   provisioner "local-exec" {
-    command = "aws s3 cp ${local.global_values_rsa_file_location} s3://${var.s3_bucket_name}/${var.environment}-global-values-rsa-keys.yaml --region ${var.aws_region}"
+    command = "aws s3 cp ${local.global_values_rsa_file_location} s3://${var.bucket_name}/${var.environment}-global-values-rsa-keys.yaml --region ${var.aws_region}"
   }
 
   depends_on = [null_resource.generate_rsa_keys]

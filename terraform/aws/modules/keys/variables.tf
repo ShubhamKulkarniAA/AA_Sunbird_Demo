@@ -8,7 +8,7 @@ variable "building_block" {
   description = "Building block name. Used as a prefix for resources."
 }
 
-variable "s3_bucket_name" {
+variable "bucket_name" {
   type        = string
   description = "The name of the S3 bucket to upload files to."
 }
