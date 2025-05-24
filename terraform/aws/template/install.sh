@@ -8,50 +8,44 @@ read -r
 
 environment=$(basename "$(pwd)")
 
-function create_tf_backend() {
-    echo -e "Creating terraform state backend"
+create_tf_backend() {
+    echo "Creating terraform state backend..."
     bash tf_backend.sh
 }
 
-function backup_configs() {
+backup_configs() {
     timestamp=$(date +%d%m%y_%H%M%S)
-    echo -e "\n🔄 Backup existing config files if they exist"
+    echo -e "\n🔄 Backing up existing config files if they exist..."
 
-    # Ensure .kube and .config/rclone directories exist
-    mkdir -p ~/.kube
-    mkdir -p ~/.config/rclone
+    mkdir -p ~/.kube ~/.config/rclone
 
-    # Backup kube config if it exists
-    if [ -f ~/.kube/config ]; then
-        mv ~/.kube/config ~/.kube/config.$timestamp
+    if [[ -f ~/.kube/config ]]; then
+        mv ~/.kube/config ~/.kube/config."$timestamp"
         echo "✅ Backed up ~/.kube/config to ~/.kube/config.$timestamp"
     else
         echo "⚠️  ~/.kube/config not found, skipping backup"
     fi
 
-    # Backup rclone config if it exists
-    if [ -f ~/.config/rclone/rclone.conf ]; then
-        mv ~/.config/rclone/rclone.conf ~/.config/rclone/rclone.conf.$timestamp
+    if [[ -f ~/.config/rclone/rclone.conf ]]; then
+        mv ~/.config/rclone/rclone.conf ~/.config/rclone/rclone.conf."$timestamp"
         echo "✅ Backed up ~/.config/rclone/rclone.conf to ~/.config/rclone/rclone.conf.$timestamp"
     else
         echo "⚠️  ~/.config/rclone/rclone.conf not found, skipping backup"
     fi
 
-    # Export KUBECONFIG
-    export KUBECONFIG=~/.kube/config
+    export KUBECONFIG="$HOME/.kube/config"
 }
 
-function create_tf_resources() {
+create_tf_resources() {
     source tf.sh
-    echo -e "\nCreating resources on aws cloud"
+    echo -e "\nCreating resources on AWS cloud..."
 
-    # Navigate to the directory where terragrunt.hcl is actually located
-    TEMPLATE_DIR="$(dirname "$0")"
-    cd "$TEMPLATE_DIR" || { echo "❌ Cannot find template directory"; exit 1; }
+    local script_dir
+    script_dir=$(dirname "${BASH_SOURCE[0]}")
+    cd "$script_dir" || { echo "❌ Cannot find script directory"; exit 1; }
 
     echo "📁 Current working directory: $(pwd)"
-    echo "📄 Checking for terragrunt.hcl..."
-    if [ ! -f terragrunt.hcl ]; then
+    if [[ ! -f terragrunt.hcl ]]; then
         echo "❌ terragrunt.hcl not found in $(pwd)"
         exit 1
     fi
@@ -60,99 +54,114 @@ function create_tf_resources() {
     terragrunt init -upgrade
     terragrunt apply --all -auto-approve --terragrunt-non-interactive
 
-    [ -f ~/.kube/config ] && chmod 600 ~/.kube/config || echo "⚠️  ~/.kube/config not found, skipping chmod"
-}
-
-
-function certificate_keys() {
-    # Generate private and public keys using openssl
-    echo "Creation of RSA keys for certificate signing"
-    openssl genrsa -out ../terraform/aws/$environment/certkey.pem
-    openssl rsa -in ../terraform/aws/$environment/certkey.pem -pubout -out ../terraform/aws/$environment/certpubkey.pem
-
-    CERTPRIVATEKEY=$(sed 's/KEY-----/KEY-----\\n/g' ../terraform/aws/$environment/certkey.pem | sed 's/-----END/\\n-----END/g' | awk '{printf("%s",$0)}')
-    CERTPUBLICKEY=$(sed 's/KEY-----/KEY-----\\n/g' ../terraform/aws/$environment/certpubkey.pem | sed 's/-----END/\\n-----END/g' | awk '{printf("%s",$0)}')
-    CERTIFICATESIGNPRKEY=$(sed 's/BEGIN PRIVATE KEY-----/BEGIN PRIVATE KEY-----\\\\n/g' ../terraform/aws/$environment/certkey.pem | sed 's/-----END PRIVATE KEY/\\\\n-----END PRIVATE KEY/g' | awk '{printf("%s",$0)}')
-    CERTIFICATESIGNPUKEY=$(sed 's/BEGIN PUBLIC KEY-----/BEGIN PUBLIC KEY-----\\\\n/g' ../terraform/aws/$environment/certpubkey.pem | sed 's/-----END PUBLIC KEY/\\\\n-----END PUBLIC KEY/g' | awk '{printf("%s",$0)}')
-
-    printf "\n" >> ../terraform/aws/$environment/global-values.yaml
-    echo "  CERTIFICATE_PRIVATE_KEY: \"$CERTPRIVATEKEY\"" >> ../terraform/aws/$environment/global-values.yaml
-    echo "  CERTIFICATE_PUBLIC_KEY: \"$CERTPUBLICKEY\"" >> ../terraform/aws/$environment/global-values.yaml
-    echo "  CERTIFICATESIGN_PRIVATE_KEY: \"$CERTIFICATESIGNPRKEY\"" >> ../terraform/aws/$environment/global-values.yaml
-    echo "  CERTIFICATESIGN_PUBLIC_KEY: \"$CERTIFICATESIGNPUKEY\"" >> ../terraform/aws/$environment/global-values.yaml
-}
-
-function certificate_config() {
-    # Check if the key is already present in RC
-    echo "Configuring Certificatekeys"
-    kubectl -n sunbird exec deploy/nodebb -- apt update -y
-    kubectl -n sunbird exec deploy/nodebb -- apt install jq -y
-    CERTKEY=$(kubectl -n sunbird exec deploy/nodebb -- curl --location --request POST 'http://registry-service:8081/api/v1/PublicKey/search' --header 'Content-Type: application/json' --data-raw '{ "filters": {}}' | jq '.[] | .value')
-
-    # Inject cert keys to the service if its not available
-    if [ -z "$CERTKEY" ]; then
-        echo "Certificate RSA public key not available"
-        CERTPUBKEY=$(awk -F'"' '/CERTIFICATE_PUBLIC_KEY/{print $2}' ../terraform/aws/$environment/global-values.yaml)
-        curl_data="curl --location --request POST 'http://registry-service:8081/api/v1/PublicKey' --header 'Content-Type: application/json' --data-raw '{\"value\":\"$CERTPUBKEY\"}'"
-        echo "kubectl -n sunbird exec deploy/nodebb -- $curl_data" | sh -
+    if [[ -f ~/.kube/config ]]; then
+        chmod 600 ~/.kube/config
+    else
+        echo "⚠️  ~/.kube/config not found, skipping chmod"
     fi
 }
 
-function install_component() {
-    # Verify helm is installed
-    if ! command -v helm &> /dev/null; then
-        echo "❌ Helm is not installed or not found in PATH. Please install Helm before proceeding."
+certificate_keys() {
+    echo "Creating RSA keys for certificate signing..."
+
+    local cert_dir="../terraform/aws/$environment"
+    mkdir -p "$cert_dir"
+
+    openssl genrsa -out "$cert_dir/certkey.pem" 2048
+    openssl rsa -in "$cert_dir/certkey.pem" -pubout -out "$cert_dir/certpubkey.pem"
+
+    # Escape newlines for YAML
+    CERTPRIVATEKEY=$(sed ':a;N;$!ba;s/\n/\\n/g' "$cert_dir/certkey.pem")
+    CERTPUBLICKEY=$(sed ':a;N;$!ba;s/\n/\\n/g' "$cert_dir/certpubkey.pem")
+
+    # Alternative with double escape for certain usages
+    CERTIFICATESIGNPRKEY=$(sed ':a;N;$!ba;s/\n/\\\\n/g' "$cert_dir/certkey.pem")
+    CERTIFICATESIGNPUKEY=$(sed ':a;N;$!ba;s/\n/\\\\n/g' "$cert_dir/certpubkey.pem")
+
+    {
+        echo
+        echo "  CERTIFICATE_PRIVATE_KEY: \"$CERTPRIVATEKEY\""
+        echo "  CERTIFICATE_PUBLIC_KEY: \"$CERTPUBLICKEY\""
+        echo "  CERTIFICATESIGN_PRIVATE_KEY: \"$CERTIFICATESIGNPRKEY\""
+        echo "  CERTIFICATESIGN_PUBLIC_KEY: \"$CERTIFICATESIGNPUKEY\""
+    } >> "$cert_dir/global-values.yaml"
+}
+
+certificate_config() {
+    echo "Configuring Certificate keys..."
+
+    kubectl -n sunbird exec deploy/nodebb -- apt update -y
+    kubectl -n sunbird exec deploy/nodebb -- apt install -y jq
+
+    CERTKEY=$(kubectl -n sunbird exec deploy/nodebb -- \
+      curl --location --request POST 'http://registry-service:8081/api/v1/PublicKey/search' \
+      --header 'Content-Type: application/json' --data-raw '{ "filters": {}}' | jq -r '.[0].value // empty')
+
+    if [[ -z "$CERTKEY" ]]; then
+        echo "Certificate RSA public key not found. Injecting..."
+        CERTPUBKEY=$(awk -F'"' '/CERTIFICATE_PUBLIC_KEY/{print $2}' "../terraform/aws/$environment/global-values.yaml")
+        kubectl -n sunbird exec deploy/nodebb -- curl --location --request POST 'http://registry-service:8081/api/v1/PublicKey' \
+            --header 'Content-Type: application/json' --data-raw "{\"value\":\"$CERTPUBKEY\"}"
+    else
+        echo "Certificate RSA public key already present."
+    fi
+}
+
+install_component() {
+    if ! command -v helm &>/dev/null; then
+        echo "❌ Helm not found. Please install Helm before proceeding."
         exit 1
     fi
 
-    # We need a dummy configmap to start. Later learnbb will create real one
     kubectl create configmap keycloak-key -n sunbird 2>/dev/null || true
 
-    local current_directory
-    current_directory="$(pwd)"
-    if [ "$(basename "$current_directory")" != "helmcharts" ]; then
-        cd ../../../helmcharts 2>/dev/null || true
+    local cur_dir
+    cur_dir=$(pwd)
+    if [[ $(basename "$cur_dir") != "helmcharts" ]]; then
+        cd ../../../helmcharts || true
     fi
 
     local component="$1"
+
     kubectl create namespace sunbird 2>/dev/null || true
     kubectl create namespace velero 2>/dev/null || true
-    echo -e "\nInstalling $component"
+
+    echo -e "\nInstalling component: $component"
 
     local ed_values_flag=""
-    if [ -f "$component/ed-values.yaml" ]; then
+    if [[ -f "$component/ed-values.yaml" ]]; then
         ed_values_flag="-f $component/ed-values.yaml --wait --wait-for-jobs"
     fi
 
-    # Generate the key pair required for certificate template
-    if [ "$component" = "learnbb" ]; then
-        if kubectl get job keycloak-kids-keys -n sunbird >/dev/null 2>&1; then
+    if [[ "$component" == "learnbb" ]]; then
+        if kubectl get job keycloak-kids-keys -n sunbird &>/dev/null; then
             echo "Deleting existing job keycloak-kids-keys..."
             kubectl delete job keycloak-kids-keys -n sunbird
         fi
 
-        if [ -f "certkey.pem" ] && [ -f "certpubkey.pem" ]; then
-            echo "✅ Certificate keys are already created. Skipping the keys creation..."
+        if [[ -f "certkey.pem" && -f "certpubkey.pem" ]]; then
+            echo "✅ Certificate keys already created; skipping creation."
         else
             certificate_keys
         fi
     fi
 
-    helm upgrade --install "$component" "$component" --namespace sunbird -f "$component/values.yaml" \
-        $ed_values_flag \
+    helm upgrade --install "$component" "$component" --namespace sunbird \
+        -f "$component/values.yaml" $ed_values_flag \
         -f "../terraform/aws/$environment/global-values.yaml" \
-        -f "../terraform/aws/$environment/global-cloud-values.yaml" --timeout 30m --debug
+        -f "../terraform/aws/$environment/global-cloud-values.yaml" \
+        --timeout 30m --debug
 }
 
-function install_helm_components() {
-    components=("monitoring" "edbb" "learnbb" "knowledgebb" "obsrvbb" "inquirybb" "additional")
+install_helm_components() {
+    local components=("monitoring" "edbb" "learnbb" "knowledgebb" "obsrvbb" "inquirybb" "additional")
     for component in "${components[@]}"; do
         install_component "$component"
     done
 }
 
-function post_install_nodebb_plugins() {
-    echo ">> Waiting for NodeBB to be ready..."
+post_install_nodebb_plugins() {
+    echo ">> Waiting for NodeBB deployment to be ready..."
     kubectl rollout status deployment nodebb -n sunbird --timeout=300s
 
     echo ">> Activating NodeBB plugins..."
@@ -164,63 +173,67 @@ function post_install_nodebb_plugins() {
     kubectl exec -n sunbird deploy/nodebb -- ./nodebb build
     kubectl exec -n sunbird deploy/nodebb -- ./nodebb restart
 
-    echo "✅ NodeBB plugins are activated and NodeBB has been restarted."
+    echo "✅ NodeBB plugins activated and NodeBB restarted."
 }
 
-function dns_mapping() {
+dns_mapping() {
+    local domain_name
     domain_name=$(kubectl get cm -n sunbird lms-env -ojsonpath='{.data.sunbird_web_url}')
-    PUBLIC_IP=$(kubectl get svc -n sunbird nginx-public-ingress -ojsonpath='{.status.loadBalancer.ingress[0].ip}')
+    local public_ip
+    public_ip=$(kubectl get svc -n sunbird nginx-public-ingress -ojsonpath='{.status.loadBalancer.ingress[0].ip}')
 
-    local timeout=$((SECONDS + 1200))  # 20 minutes from now
+    local timeout=$((SECONDS + 1200))  # 20 minutes timeout
     local check_interval=10
 
-    echo -e "\nAdd/update your DNS mapping for your domain by adding an A record to this IP: $PUBLIC_IP"
+    echo -e "\nAdd or update your DNS A record for domain $domain_name to point to IP: $public_ip"
 
-    # Wait until domain_name resolves to the PUBLIC_IP or timeout
-    while ! nslookup "$domain_name" | grep -q "$PUBLIC_IP"; do
-        if [ $SECONDS -ge $timeout ]; then
-            echo "❌ Timeout reached: DNS entry for $domain_name does not point to $PUBLIC_IP"
+    while ! nslookup "$domain_name" 2>/dev/null | grep -q "$public_ip"; do
+        if (( SECONDS >= timeout )); then
+            echo "❌ Timeout reached: DNS entry for $domain_name does not point to $public_ip"
             break
         fi
-        echo "Waiting for DNS $domain_name to point to $PUBLIC_IP..."
+        echo "Waiting for DNS $domain_name to point to $public_ip..."
         sleep $check_interval
     done
-    echo "✅ DNS mapping for $domain_name is set to $PUBLIC_IP"
+
+    echo "✅ DNS mapping for $domain_name is set to $public_ip"
 }
 
-function check_pod_status() {
-    namespace="sunbird"
-    components=("learnbb" "knowledgebb" "nodebb" "obsrvbb" "inquirybb" "edbb" "monitoring" "additional")
+check_pod_status() {
+    local namespace="sunbird"
+    local components=("learnbb" "knowledgebb" "nodebb" "obsrvbb" "inquirybb" "edbb" "monitoring" "additional")
 
-    echo -e "\n🧪 Checking pod status for sunbird pods"
+    echo -e "\n🧪 Checking pod status in namespace $namespace..."
     for pod in "${components[@]}"; do
-        echo -e "\nChecking pod: $pod in namespace: $namespace"
-        kubectl wait --for=condition=ready pod -l app="$pod" -n "$namespace" --timeout=300s || {
-            echo "❌ Pod $pod is not ready after 300 seconds"
-        }
+        echo -e "\nChecking pod(s) with label app=$pod in namespace $namespace"
+        if ! kubectl wait --for=condition=ready pod -l app="$pod" -n "$namespace" --timeout=300s; then
+            echo "❌ Pod(s) with app=$pod are not ready after 300 seconds"
+        else
+            echo "✅ Pod(s) with app=$pod are ready"
+        fi
     done
 }
 
-function run_post_install() {
+run_post_install() {
     post_install_nodebb_plugins
     certificate_config
     dns_mapping
     check_pod_status
 }
 
-function cleanworkspace() {
+cleanworkspace() {
     echo "Cleaning workspace..."
-    rm -rf ../terraform/aws/"$environment"/global-values.yaml
+    rm -f "../terraform/aws/$environment/global-values.yaml"
 }
 
-function destroy_tf_resources() {
-    echo -e "\nDestroying resources on aws cloud"
-    terragrunt run-all destroy --terragrunt-non-interactive || {
+destroy_tf_resources() {
+    echo -e "\nDestroying resources on AWS cloud..."
+    if ! terragrunt run-all destroy --terragrunt-non-interactive; then
         echo "⚠️ Destroy failed or aborted"
-    }
+    fi
 }
 
-function invoke_functions() {
+invoke_functions() {
     backup_configs
     create_tf_backend
     create_tf_resources
