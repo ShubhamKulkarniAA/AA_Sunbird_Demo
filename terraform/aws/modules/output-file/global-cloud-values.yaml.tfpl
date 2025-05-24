@@ -1,0 +1,35 @@
+global:
+  env: ${env}
+  environment: ${environment}
+  building_block: ${building_block}
+  cloud_storage_access_key: ${aws_access_key_id}
+  cloud_storage_secret_key: ${aws_secret_access_key}
+  public_container_name: ${aws_s3_public_bucket_name}
+  private_container_name: ${aws_s3_private_bucket_name}
+  dial_state_container_public: ${aws_s3_dial_state_bucket_name}
+  private_ingressgateway_ip: ${private_ingressgateway_ip}
+  encryption__string: ${encryption_string}
+  random_string: ${random_string}
+  object_storage_endpoint: s3.${aws_region}.amazonaws.com
+
+velero:
+  enabled: true
+  credentials:
+    useSecret: true
+    secretContents:
+      cloud: |
+        AWS_ACCESS_KEY_ID: ${aws_access_key_id}
+        AWS_SECRET_ACCESS_KEY: ${aws_secret_access_key}
+  configuration:
+    backupStorageLocation:
+      - name: default
+        provider: "aws"
+        bucket: ${aws_s3_public_bucket_name}/backups
+        config:
+          region: ${aws_region}
+          s3ForcePathStyle: "true"  # Optional, depends on your setup
+
+nginx-public-ingress:
+  commonAnnotations:
+    reloader.stakater.com/auto: "true"
+    service.beta.kubernetes.io/aws-load-balancer-type: "true"

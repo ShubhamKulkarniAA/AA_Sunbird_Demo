@@ -30,7 +30,35 @@ inputs = {
   max_size             = 1
   min_size             = 1
 
+
   s3_bucket_name       = "sunbirdedaa-demo-bucket"
+  storage_account_name = "sunbirdedaa-demo-bucket"       # Use this same bucket name for your upload-files module
+  storage_container_public = "public"   # your public container/folder in bucket
   environment          = "demo"
   s3_versioning_status = "Enabled"
+}
+
+# Add dependency blocks so terragrunt knows where the modules are:
+
+dependency "vpc" {
+  config_path = "./modules/vpc"
+}
+
+dependency "eks" {
+  config_path = "./modules/eks"
+}
+
+dependency "keys" {
+  # Adjust this relative path to where your keys module folder is
+  config_path = "./keys"
+}
+
+dependency "upload_files" {
+  # Adjust this relative path to where your upload-files module folder is
+  config_path = "./upload-files"
+}
+
+dependency "output_file" {
+  # Adjust this relative path to where your output-file module folder is
+  config_path = "./output-file"
 }
