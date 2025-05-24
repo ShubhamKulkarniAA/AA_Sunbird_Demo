@@ -17,6 +17,6 @@ EOF
 terraform {
   extra_arguments "tfvars" {
     commands = ["apply", "plan", "destroy", "import"]
-    arguments = ["-var-file=../modules/terraform.tfvars"]
+    arguments = ["-var-file=../../modules/terraform.tfvars"]
   }
 }
