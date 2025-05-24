@@ -56,7 +56,7 @@ function create_tf_resources() {
         exit 1
     fi
 
-    terraform init
+    terraform init -migrate-state
     terragrunt init -upgrade
     terragrunt apply --all
 
