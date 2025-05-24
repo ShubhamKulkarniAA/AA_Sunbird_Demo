@@ -3,7 +3,7 @@ locals {
   env             = local.global_vars.global.env
   environment     = local.global_vars.global.environment
   building_block  = local.global_vars.global.building_block
-  aws_region      = local.global_vars.global.aws_region
+  aws_region      = local.global_vars.global.cloud_storage_region
 }
 
 terraform {
