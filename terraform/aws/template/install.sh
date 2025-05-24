@@ -56,7 +56,7 @@ function create_tf_resources() {
         exit 1
     fi
 
-    terraform init -migrate-state
+    terraform init -reconfigure
     terragrunt init -upgrade
     terragrunt apply --all -auto-approve --terragrunt-non-interactive
 
