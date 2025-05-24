@@ -23,5 +23,5 @@ inputs = {
   aws_region     = local.aws_region
 
   vpc_id         = dependency.network.outputs.vpc_id
-  subnet_ids     = dependency.network.outputs.subnet_ids
+  public_subnet_ids     = dependency.network.outputs.subnet_ids
 }
