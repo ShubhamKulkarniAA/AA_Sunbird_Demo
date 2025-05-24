@@ -1,0 +1,17 @@
+[ownaccount]
+type = s3
+provider = AWS
+access_key_id = ${storage_account_name}         # Your AWS Access Key ID
+secret_access_key = ${storage_account_key}      # Your AWS Secret Access Key
+region = ${aws_region}
+endpoint = s3.amazonaws.com
+acl = private
+
+[sunbird]
+type = s3
+provider = AWS
+access_key_id = ${sunbird_public_artifacts_account}
+secret_access_key = ${sunbird_public_artifacts_account_sas_url}
+region = ${aws_region}
+endpoint = s3.amazonaws.com
+acl = public-read
