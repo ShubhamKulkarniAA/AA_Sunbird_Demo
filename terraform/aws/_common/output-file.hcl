@@ -38,8 +38,6 @@ inputs = {
   building_block              = local.building_block
   aws_region                  = local.aws_region
 
-  private_ingressgateway_ip   = dependency.eks.outputs.private_ingressgateway_ip
-
   s3_bucket_name_public       = dependency.storage.outputs.s3_bucket_name_public
   s3_bucket_name_private      = dependency.storage.outputs.s3_bucket_name_private
   s3_bucket_arn_public        = dependency.storage.outputs.s3_bucket_arn_public
