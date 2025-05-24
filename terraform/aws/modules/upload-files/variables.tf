@@ -6,5 +6,4 @@ variable "bucket_name" {
 variable "schemas_path" {
   type        = string
   description = "Local path to schema JSON templates."
-  default     = path.module + "/schemas"
 }
