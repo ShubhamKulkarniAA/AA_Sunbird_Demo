@@ -14,7 +14,11 @@ output "eks_cluster_endpoint" {
 }
 
 output "eks_cluster_kubeconfig" {
-  value       = aws_eks_cluster.eks.kubeconfig[0].cluster_ca_certificate_authority_data
-  description = "Base64 encoded certificate data for cluster access"
+  value = {
+    endpoint                    = aws_eks_cluster.eks.endpoint
+    cluster_ca_certificate_data = aws_eks_cluster.eks.certificate_authority[0].data
+    cluster_name                = aws_eks_cluster.eks.name
+  }
+  description = "EKS cluster kubeconfig info"
   sensitive   = true
 }
