@@ -3,9 +3,9 @@ include "root" {
 }
 
 include "environment" {
-  path = "${get_terragrunt_dir()}/../../_common/aks.hcl"
-# This section will be enabled after final code is pushed and tagged
-#  expose = true
+  path = "${get_terragrunt_dir()}/../../_common/eks.hcl"
+  # This section will be enabled after final code is pushed and tagged
+  # expose = true
 }
 
 # This section will be enabled after final code is pushed and tagged
