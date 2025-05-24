@@ -13,7 +13,7 @@ dependency "network" {
   config_path = "../network"
   mock_outputs = {
     vpc_id     = "dummy-vpc-id"
-    subnet_ids = ["subnet-abc123", "subnet-def456"]
+    public_subnet_ids = ["subnet-abc123", "subnet-def456"]
   }
 }
 
