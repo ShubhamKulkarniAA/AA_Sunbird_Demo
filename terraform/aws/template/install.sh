@@ -322,7 +322,7 @@ install_component() {
         -f "$chart_path/values.yaml" $ed_values_flag \
         -f "$global_values_path" \
         -f "$global_cloud_values_path" \
-        --timeout 30m --debug --wait --wait-for-jobs || { echo "❌ Helm installation failed for $component. Check logs above for details."; exit 1; }
+        --timeout 45m --debug --wait --wait-for-jobs || { echo "❌ Helm installation failed for $component. Check logs above for details."; exit 1; }
     echo "✅ Component $component installed/upgraded successfully."
 }
 
@@ -424,9 +424,6 @@ dns_mapping() {
 
 check_pod_status() {
     local namespace="sunbird"
-    # Updated mapping of Helm chart name to a representative label for checking pod readiness.
-    # Prioritize 'app.kubernetes.io/instance' and 'app.kubernetes.io/name' which are standard Helm labels.
-    # Fallback to older 'app' label if the chart does not use the recommended ones.
     declare -A component_labels
     component_labels=(
         ["monitoring"]="app.kubernetes.io/instance=kube-prometheus-stack,app.kubernetes.io/name=kube-prometheus-stack"
