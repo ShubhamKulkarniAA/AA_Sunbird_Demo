@@ -5,33 +5,13 @@ set -euo pipefail
 EKS_CLUSTER_NAME="demo-sunbirdedAA-eks" # <<< REMEMBER TO CHANGE THIS!
 
 # Determine the absolute path of the script's directory
-# This handles cases where the script is sourced or symlinked
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Define the root directory for Helm charts and Terraform/Terragrunt
-# Assuming 'helmcharts' and 'terraform' are siblings to the script's parent directory
-# If your script is in 'my-repo/scripts/install.sh', then BASE_DIR is 'my-repo'
-# If your script is in 'my-repo/terraform/aws/dev/install.sh', then BASE_DIR is 'my-repo'
-# Adjust `BASE_DIR` calculation based on your actual repository structure.
-# For example, if install.sh is directly in the root of your repo:
-# export BASE_DIR="${SCRIPT_DIR}"
-# If install.sh is in a subdirectory, like 'scripts':
-# export BASE_DIR="$(dirname "$SCRIPT_DIR")"
-# Based on the original script's calculation of HELM_CHARTS_ROOT_DIR,
-# it seems `install.sh` might be 3 levels deep from the repo root.
-# Example: repo_root/platform/deploy/scripts/install.sh
-# In this case:
-# BASE_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
-# Let's assume for this example, the script is directly in the `terraform/aws/$environment` directory.
-# So, the root of your project containing 'terraform' and 'helmcharts' is two levels up from the script.
-export BASE_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
+export BASE_DIR="$(dirname "$(dirname "$(dirname "$SCRIPT_DIR")")")"
 
 HELM_CHARTS_ROOT_DIR="${BASE_DIR}/helmcharts"
-export HELM_CHARTS_ROOT_DIR=$(realpath "$HELM_CHARTS_ROOT_DIR") # Ensure it's an absolute path
+export HELM_CHARTS_ROOT_DIR=$(realpath "$HELM_CHARTS_ROOT_DIR")
 
 # Determine the environment from the current directory name
-# This assumes the script is run from a directory like 'terraform/aws/dev' or 'terraform/aws/prod'
-# Adjust if your environment naming convention is different.
 environment=$(basename "$(pwd)")
 
 # --- AWS Credential Prompts ---
@@ -94,8 +74,8 @@ backup_configs() {
 
 clear_terragrunt_cache() {
     echo -e "\n--- Clearing Terragrunt Cache Folders ---"
-    # Using -prune to avoid descending into .terragrunt-cache directories once found
-    find "${BASE_DIR}/terraform/aws" -type d -name ".terragrunt-cache" -prune -exec rm -rf {} + || echo "No Terragrunt cache found or failed to delete."
+    # Assuming .terragrunt-cache might be in any module under BASE_DIR/terraform
+    find "${BASE_DIR}/terraform" -type d -name ".terragrunt-cache" -prune -exec rm -rf {} + || echo "No Terragrunt cache found or failed to delete."
     echo "✅ Terragrunt cache cleared."
 }
 
@@ -109,7 +89,11 @@ create_tf_resources() {
     fi
     source "$tf_script"
 
-    local terragrunt_root_dir="${BASE_DIR}/terraform/aws/$environment"
+    # The terragrunt_root_dir is where your terragrunt.hcl file resides.
+    # Given your current PWD and where you run the script, it implies
+    # that your terragrunt.hcl is in the same directory as install.sh.
+    local terragrunt_root_dir="$SCRIPT_DIR"
+
     if [[ ! -d "$terragrunt_root_dir" ]]; then
         echo "❌ Error: Terragrunt root directory not found at: $terragrunt_root_dir"
         exit 1
@@ -176,7 +160,10 @@ setup_kubernetes_prerequisites() {
 certificate_keys() {
     echo -e "\n--- Generating RSA Keys for Certificate Signing ---"
 
-    local cert_dir="${BASE_DIR}/terraform/aws/$environment" # Use BASE_DIR for consistency
+    # This path is relative to BASE_DIR/terraform/aws
+    # So if BASE_DIR is /home/ubuntu/AA_Sunbird_Demo, and environment is 'template'
+    # this will correctly point to /home/ubuntu/AA_Sunbird_Demo/terraform/aws/template
+    local cert_dir="${BASE_DIR}/terraform/aws/$environment"
     mkdir -p "$cert_dir" || { echo "❌ Failed to create directory: $cert_dir"; exit 1; }
 
     if [[ -f "$cert_dir/certkey.pem" && -f "$cert_dir/certpubkey.pem" ]]; then
@@ -188,7 +175,6 @@ certificate_keys() {
     fi
 
     # Escape newlines for YAML
-    # Using 'tr' is often safer for simple substitutions than 'sed' for newlines
     CERTPRIVATEKEY=$(cat "$cert_dir/certkey.pem" | tr '\n' '\\n' | sed 's/\\n$//') # Remove trailing newline escape
     CERTPUBLICKEY=$(cat "$cert_dir/certpubkey.pem" | tr '\n' '\\n' | sed 's/\\n$//') # Remove trailing newline escape
 
@@ -249,7 +235,7 @@ certificate_config() {
     set -e
 
     if [[ "$curl_exit_code" -ne 0 && "$curl_exit_code" -ne 22 ]]; then # 22 is HTTP error, like 404/500
-        echo "⚠️ Warning: `curl` command to Registry Service failed with exit code $curl_exit_code. This might indicate the Registry Service is not fully ready or accessible."
+        echo "⚠️ Warning: \`curl\` command to Registry Service failed with exit code $curl_exit_code. This might indicate the Registry Service is not fully ready or accessible."
         echo "Attempting to proceed with public key injection, but keep an eye on Registry Service logs."
     fi
 
@@ -306,6 +292,7 @@ install_component() {
         ed_values_flag="-f $chart_path/ed-values.yaml"
     fi
 
+    # These paths are now relative to BASE_DIR and then down into terraform/aws/$environment
     local global_values_path="${BASE_DIR}/terraform/aws/$environment/global-values.yaml"
     local global_cloud_values_path="${BASE_DIR}/terraform/aws/$environment/global-cloud-values.yaml"
 
@@ -345,7 +332,8 @@ install_helm_components() {
     local components=("monitoring" "edbb" "learnbb" "knowledgebb" "obsrvbb" "inquirybb" "additional")
     for component in "${components[@]}"; do
         install_component "$component"
-    done
+    EOD
+done
     echo "✅ All specified Helm components installed."
 }
 
@@ -517,7 +505,8 @@ check_pod_status() {
             else
                 echo "  ⚠️ No Deployments, StatefulSets, DaemonSets, or raw pods found with label selector '$label_selector' for component '$component'."
                 echo "  This might be expected if the component is purely a Job or uses different labels not covered."
-            fi
+            C1
+fi
         fi
     done
 
