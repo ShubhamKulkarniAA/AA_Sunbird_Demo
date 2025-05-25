@@ -1,23 +1,17 @@
 {{- if and .Values.kubeEtcd.enabled .Values.kubeEtcd.serviceMonitor.enabled .Values.kubernetesServiceMonitors.enabled }}
-apiVersion: [monitoring.coreos.com/v1](https://monitoring.coreos.com/v1)
+apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: {{ template "kube-prometheus-stack.fullname" . }}-kube-etcd
   namespace: {{ template "kube-prometheus-stack.namespace" . }}
   labels:
     app: {{ template "kube-prometheus-stack.name" . }}-kube-etcd
-    # The following lines were commented out to resolve "mapping values are not allowed in this context" error.
-    # This error typically occurs when templated values or helper functions produce malformed YAML
-    # in the 'labels' section.
-    # {{- with .Values.kubeEtcd.serviceMonitor.additionalLabels }}
-    #   {{- toYaml . | nindent 4 }}
-    # {{- end }}
-    # {{ include "kube-prometheus-stack.labels" . | indent 4 }}
+    # The following lines were previously commented out and are now removed.
+    # They were related to dynamic label generation and were causing YAML parsing errors.
 spec:
   jobLabel: jobLabel
-  # The following line was commented out to resolve "mapping values are not allowed in this context" error.
-  # This helper might be generating malformed YAML or incorrect indentation.
-  # {{- include "servicemonitor.scrapeLimits" .Values.kubeEtcd.serviceMonitor | nindent 4 }}
+  # The following line was previously commented out and is now removed.
+  # It was related to scrape limits and was also causing YAML parsing errors.
   selector:
     matchLabels:
       app: {{ template "kube-prometheus-stack.name" . }}-kube-etcd
