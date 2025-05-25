@@ -22,7 +22,7 @@ inputs = {
   availability_zone_1      = "ap-south-1a"
   availability_zone_2      = "ap-south-1b"
 
-  eks_cluster_name         = "sunbirdedAA-demo-cluster"
+  eks_cluster_name         = "demo-sunbirdedAA-eks"
   cluster_role_name        = "sunbirdedAA-demo-EKSClusterRole"
   node_role_name           = "sunbirdedAA-demo-EKSNodeRole"
   instance_type            = "t3.medium"
