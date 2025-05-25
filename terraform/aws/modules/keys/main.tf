@@ -1,4 +1,5 @@
 provider "tls" {}
+
 provider "aws" {
   region = var.aws_region
 }
@@ -9,6 +10,7 @@ locals {
   rsa_script_location             = "${var.base_location}/../../../../scripts/rsa-keys.py"
   global_values_jwt_file_location = "${var.base_location}/../../../../scripts/global-values-jwt-tokens.yaml"
   global_values_rsa_file_location = "${var.base_location}/../../../../scripts/global-values-rsa-keys.yaml"
+  global_values_yaml              = "${var.base_location}/../global-values.yaml"
 }
 
 resource "random_password" "generated_string" {
@@ -29,33 +31,33 @@ resource "random_password" "encryption_string" {
 
 resource "null_resource" "generate_jwt_keys" {
   triggers = {
-    command = timestamp()
+    jwt_key = random_password.generated_string.result
   }
 
   provisioner "local-exec" {
     command = <<EOT
       python3 ${local.jwt_script_location} ${random_password.generated_string.result} && \
-      yq eval-all 'select(fileIndex == 0) *+ {"global": (select(fileIndex == 0).global * load("${local.global_values_jwt_file_location}"))}' -i ${var.base_location}/../global-values.yaml
+      yq eval-all 'select(fileIndex == 0) *+ {"global": (select(fileIndex == 0).global * load("${local.global_values_jwt_file_location}"))}' -i ${local.global_values_yaml}
     EOT
   }
 }
 
 resource "null_resource" "generate_rsa_keys" {
   triggers = {
-    command = timestamp()
+    rsa_count = var.rsa_keys_count
   }
 
   provisioner "local-exec" {
     command = <<EOT
       python3 ${local.rsa_script_location} ${var.rsa_keys_count} && \
-      yq eval-all 'select(fileIndex == 0) *+ {"global": (select(fileIndex == 0).global * load("${local.global_values_rsa_file_location}"))}' -i ${var.base_location}/../global-values.yaml
+      yq eval-all 'select(fileIndex == 0) *+ {"global": (select(fileIndex == 0).global * load("${local.global_values_rsa_file_location}"))}' -i ${local.global_values_yaml}
     EOT
   }
 }
 
 resource "null_resource" "upload_global_jwt_values_yaml" {
   triggers = {
-    command = timestamp()
+    jwt_file_hash = filesha256(local.global_values_jwt_file_location)
   }
 
   provisioner "local-exec" {
@@ -67,7 +69,7 @@ resource "null_resource" "upload_global_jwt_values_yaml" {
 
 resource "null_resource" "upload_global_rsa_values_yaml" {
   triggers = {
-    command = timestamp()
+    rsa_file_hash = filesha256(local.global_values_rsa_file_location)
   }
 
   provisioner "local-exec" {
@@ -77,12 +79,15 @@ resource "null_resource" "upload_global_rsa_values_yaml" {
   depends_on = [null_resource.generate_rsa_keys]
 }
 
-# Optional: Terrahelp encryption (commented out)
-# resource "null_resource" "terrahelp_encryption" {
-#   triggers = {
-#     command = timestamp()
-#   }
-#   provisioner "local-exec" {
-#     command = "terrahelp encrypt -simple-key=${random_password.generated_string.result} -file=${local.global_values_keys_file}"
-#   }
-# }
+# Optional: Terrahelp encryption toggle
+resource "null_resource" "terrahelp_encryption" {
+  count = var.enable_terrahelp ? 1 : 0
+
+  triggers = {
+    encryption_key = random_password.generated_string.result
+  }
+
+  provisioner "local-exec" {
+    command = "terrahelp encrypt -simple-key=${random_password.generated_string.result} -file=${local.global_values_keys_file}"
+  }
+}
