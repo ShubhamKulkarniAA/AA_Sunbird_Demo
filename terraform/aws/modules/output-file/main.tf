@@ -7,7 +7,7 @@ resource "local_sensitive_file" "global_cloud_values_yaml" {
     env                       = var.env,
     environment               = var.environment,
     building_block            = var.building_block,
-    aws_s3_bucket_name        = var.s3_bucket_name,
+    aws_s3_bucket_name        = var.bucket_name,
     aws_s3_private_path       = var.s3_private_path,
     aws_s3_public_path        = var.s3_public_path,
     aws_s3_dial_state_path    = var.s3_dial_state_path,
