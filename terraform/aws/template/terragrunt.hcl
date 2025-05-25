@@ -38,5 +38,6 @@ inputs = {
   s3_versioning_status     = "Enabled"
 
   rsa_keys_count           = 2   # Added this to fix the missing variable error
+  aws_s3_public_bucket_name = "sunbirdedaa-demo-bucket"
 
 }
