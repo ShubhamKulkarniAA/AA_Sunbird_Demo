@@ -38,12 +38,12 @@ global:
     availability_zone_2: "ap-south-1b"
 
   eks:
-    cluster_name: "demo-sunbirdedAA-eks"
+    cluster_name: "sunbirdedAA-demo-eks-cluster"
     cluster_role_name: "sunbirdedAA-demo-EKSClusterRole"
     node_role_name: "sunbirdedAA-demo-EKSNodeRole"
-    instance_type: "t3.medium"
-    desired_size: 1
-    max_size: 1
+    instance_type: "c5.4xlarge"
+    desired_size: 2
+    max_size: 2
     min_size: 1
 
   s3:

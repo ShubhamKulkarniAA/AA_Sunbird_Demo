@@ -22,12 +22,12 @@ inputs = {
   availability_zone_1        = "ap-south-1a"
   availability_zone_2        = "ap-south-1b"
 
-  eks_cluster_name           = "demo-sunbirdedAA-eks"
+  eks_cluster_name           = "sunbirdedAA-demo-eks-cluster"
   cluster_role_name          = "sunbirdedAA-demo-EKSClusterRole"
   node_role_name             = "sunbirdedAA-demo-EKSNodeRole"
-  instance_type              = "t3.medium"
-  desired_size               = 1
-  max_size                   = 1
+  instance_type              = "c5.4xlarge"
+  desired_size               = 2
+  max_size                   = 2
   min_size                   = 1
 
   bucket_name                = "sunbirdedaa-demo-bucket"
