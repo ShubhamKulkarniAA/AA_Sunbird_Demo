@@ -59,7 +59,7 @@ resource "aws_s3_object" "upload_global_jwt_values_yaml" {
   bucket = var.bucket_name
   key    = "${var.environment}-global-values-jwt-tokens.yaml"
   source = local.global_values_jwt_file_location
-  etag   = filesha256(local.global_values_jwt_file_location)
+  #etag   = filesha256(local.global_values_jwt_file_location)
 
   depends_on = [null_resource.generate_jwt_keys]
 }
@@ -68,7 +68,7 @@ resource "aws_s3_object" "upload_global_rsa_values_yaml" {
   bucket = var.bucket_name
   key    = "${var.environment}-global-values-rsa-keys.yaml"
   source = local.global_values_rsa_file_location
-  etag   = filesha256(local.global_values_rsa_file_location)
+  # etag   = filesha256(local.global_values_rsa_file_location)
 
   depends_on = [null_resource.generate_rsa_keys]
 }
