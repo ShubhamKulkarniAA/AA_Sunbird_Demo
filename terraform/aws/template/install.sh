@@ -1,6 +1,27 @@
 #!/bin/bash
 set -euo pipefail
 
+# Check if AWS_ACCESS_KEY_ID is set, else prompt
+if [[ -z "${AWS_ACCESS_KEY_ID:-}" ]]; then
+  read -rp "Enter your AWS_ACCESS_KEY_ID: " AWS_ACCESS_KEY_ID
+fi
+
+# Check if AWS_SECRET_ACCESS_KEY is set, else prompt
+if [[ -z "${AWS_SECRET_ACCESS_KEY:-}" ]]; then
+  read -rsp "Enter your AWS_SECRET_ACCESS_KEY: " AWS_SECRET_ACCESS_KEY
+  echo
+fi
+
+# Check if AWS_REGION is set, else prompt
+if [[ -z "${AWS_REGION:-}" ]]; then
+  read -rp "Enter your AWS_REGION (e.g., us-east-1): " AWS_REGION
+fi
+
+# Export terraform variables from the AWS environment variables
+export TF_VAR_aws_access_key_id="$AWS_ACCESS_KEY_ID"
+export TF_VAR_aws_secret_access_key="$AWS_SECRET_ACCESS_KEY"
+export TF_VAR_aws_region="$AWS_REGION"
+
 echo -e "\nPlease ensure you have updated all the mandatory variables as mentioned in the documentation."
 echo "The installation will fail if any of the mandatory variables are missing."
 echo "Press Enter to continue..."
@@ -36,7 +57,6 @@ backup_configs() {
     export KUBECONFIG="$HOME/.kube/config"
 }
 
-# NEW FUNCTION: Clear terragrunt cache folders
 clear_terragrunt_cache() {
     echo "Clearing Terragrunt cache folders..."
     find . -type d -name ".terragrunt-cache" -exec rm -rf {} + || echo "No Terragrunt cache found or failed to delete"
@@ -56,7 +76,7 @@ create_tf_resources() {
         exit 1
     fi
 
-    clear_terragrunt_cache   # <-- Added here!
+    clear_terragrunt_cache
 
     terraform init -migrate-state
     terragrunt init -migrate-state
@@ -222,33 +242,17 @@ check_pod_status() {
     done
 }
 
-run_post_install() {
-    post_install_nodebb_plugins
-    certificate_config
-    dns_mapping
-    check_pod_status
-}
-
-cleanworkspace() {
-    echo "Cleaning workspace..."
-    rm -f "../terraform/aws/$environment/global-values.yaml"
-}
-
-destroy_tf_resources() {
-    echo -e "\nDestroying resources on AWS cloud..."
-    if ! terragrunt run-all destroy --terragrunt-non-interactive; then
-        echo "⚠️ Destroy failed or aborted"
-    fi
-}
-
-invoke_functions() {
-    backup_configs
+main() {
     create_tf_backend
+    backup_configs
     create_tf_resources
     install_helm_components
-    run_post_install
+    certificate_config
+    post_install_nodebb_plugins
+    dns_mapping
+    check_pod_status
+
+    echo -e "\n🎉 All tasks completed successfully!"
 }
 
-trap cleanworkspace EXIT
-
-invoke_functions
+main "$@"

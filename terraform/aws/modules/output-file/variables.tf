@@ -13,6 +13,11 @@ variable "building_block" {
   description = "Building block name to prefix resources."
 }
 
+variable "aws_access_key_id" {
+  description = "AWS access key ID"
+  type        = string
+}
+
 variable "bucket_name" {
   type        = string
   description = "AWS S3 bucket name where the global cloud values YAML file will be uploaded."
