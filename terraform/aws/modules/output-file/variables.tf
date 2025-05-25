@@ -28,6 +28,11 @@ variable "bucket_name" {
   description = "AWS S3 bucket name where the global cloud values YAML file will be uploaded."
 }
 
+variable "aws_s3_public_bucket_name" {
+  type        = string
+  description = "S3 bucket name for public data storage."
+}
+
 variable "s3_private_path" {
   type        = string
   description = "S3 path for private data storage (can be used in template file)."
