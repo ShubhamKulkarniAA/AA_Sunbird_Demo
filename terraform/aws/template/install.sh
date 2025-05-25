@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-EKS_CLUSTER_NAME="sunbirdedAA-demo-cluster" # <<< REMEMBER TO CHANGE THIS!
+EKS_CLUSTER_NAME="demo-sunbirdedAA-eks" # <<< REMEMBER TO CHANGE THIS!
 
 # --- Function Definitions ---
 
