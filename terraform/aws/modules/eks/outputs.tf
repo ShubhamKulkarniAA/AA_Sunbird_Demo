@@ -3,6 +3,11 @@ output "eks_cluster_id" {
   description = "ID of the EKS cluster"
 }
 
+output "eks_cluster_name" {
+  value       = aws_eks_cluster.eks.name
+  description = "The name of the EKS cluster."
+}
+
 output "eks_node_group_name" {
   value       = aws_eks_node_group.eks_nodes.id
   description = "Name of the EKS node group"

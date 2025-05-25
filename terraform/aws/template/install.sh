@@ -63,12 +63,12 @@ create_tf_resources() {
 
     echo "Configuring kubectl for EKS cluster..."
     local EKS_CLUSTER_NAME
-    # Correctly retrieve the 'cluster_name' from the 'eks_cluster_kubeconfig' output
-    EKS_CLUSTER_NAME=$(terragrunt output -no-color -json eks_cluster_kubeconfig | jq -r '.cluster_name')
+    # Using the directly exposed 'eks_cluster_name' output
+    EKS_CLUSTER_NAME=$(terragrunt output -no-color -json eks_cluster_name | jq -r '.')
 
     if [[ -z "$EKS_CLUSTER_NAME" || "$EKS_CLUSTER_NAME" == "null" ]]; then
-        echo "❌ Error: Could not retrieve EKS_CLUSTER_NAME from Terragrunt outputs (expected from eks_cluster_kubeconfig.cluster_name)."
-        echo "Please ensure 'eks_cluster_kubeconfig' is correctly exported and 'terragrunt apply' ran successfully."
+        echo "❌ Error: Could not retrieve EKS_CLUSTER_NAME from Terragrunt outputs (expected 'eks_cluster_name' directly)."
+        echo "Please ensure 'eks_cluster_name' is correctly exported in your Terraform module and 'terragrunt apply' ran successfully."
         exit 1
     fi
     echo "Identified EKS Cluster Name: $EKS_CLUSTER_NAME"
@@ -230,9 +230,13 @@ dns_mapping() {
 
     local dns_propagation_timeout=$((SECONDS + 1200))
     echo "Add/update DNS A record for $domain_name to point to $public_ip."
-    echo "Waiting for DNS $domain_name to resolve to $public_ip..."
+    echo "Waiting for DNS $domain_name to resolve to $public_ip... (Max 20 minutes)"
     while ! nslookup "$domain_name" 2>/dev/null | grep -q "$public_ip"; do
-        (( SECONDS >= dns_propagation_timeout )) && { echo "❌ DNS timeout: $domain_name does not point to $public_ip."; return 1; }
+        if (( SECONDS >= dns_propagation_timeout )); then
+            echo "❌ DNS timeout: $domain_name does not point to $public_ip."
+            echo "Please manually configure your DNS A record for $domain_name to point to $public_ip."
+            return 1
+        fi
         sleep 10
     done
     echo "✅ DNS mapping for $domain_name set to $public_ip."
