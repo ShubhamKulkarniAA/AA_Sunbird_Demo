@@ -38,4 +38,5 @@ inputs = {
   s3_versioning_status     = "Enabled"
 
   rsa_keys_count           = 2   # Added this to fix the missing variable error
+
 }

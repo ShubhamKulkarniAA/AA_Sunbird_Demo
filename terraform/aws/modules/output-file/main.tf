@@ -14,6 +14,7 @@ resource "local_sensitive_file" "global_cloud_values_yaml" {
     private_ingressgateway_ip = var.private_ingressgateway_ip,
     encryption_string         = var.encryption_string,
     random_string             = var.random_string
+    aws_access_key_id         = var.aws_access_key_id
   })
   filename = local.global_values_cloud_file
 }
