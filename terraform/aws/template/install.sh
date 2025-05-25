@@ -1,20 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# --- Configuration Variables ---
-# AWS credentials will be prompted if not set in environment
-# AWS_ACCESS_KEY_ID
-# AWS_SECRET_ACCESS_KEY
-# AWS_REGION
-
-# The name of your EKS cluster provisioned by Terragrunt.
-# IMPORTANT: Replace this with the actual name of your EKS cluster!
-# You can find this in your Terragrunt/Terraform configuration for EKS.
-# Example: EKS_CLUSTER_NAME="my-production-eks-cluster"
-# If your Terragrunt module outputs the cluster name, you could use:
-# EKS_CLUSTER_NAME=$(terragrunt output -raw eks_cluster_name)
-# For this script, manually set it or ensure 'terragrunt output' works in the right context.
-EKS_CLUSTER_NAME="<YOUR_EKS_CLUSTER_NAME>" # <<< REMEMBER TO CHANGE THIS!
+EKS_CLUSTER_NAME="sunbirdedAA-demo-cluster" # <<< REMEMBER TO CHANGE THIS!
 
 # --- Function Definitions ---
 
