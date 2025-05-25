@@ -15,6 +15,8 @@ resource "local_sensitive_file" "global_cloud_values_yaml" {
     encryption_string         = var.encryption_string,
     random_string             = var.random_string
     aws_access_key_id         = var.aws_access_key_id
+    aws_secret_access_key     = var.aws_secret_access_key
+    aws_region                = var.aws_region
   })
   filename = local.global_values_cloud_file
 }
