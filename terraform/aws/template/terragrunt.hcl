@@ -40,4 +40,5 @@ inputs = {
   rsa_keys_count           = 2   # Added this to fix the missing variable error
   aws_s3_public_bucket_name = "sunbirdedaa-demo-public-bucket"
   aws_s3_private_bucket_name = "sunbirdedaa-demo-private-bucket"
+  aws_s3_dial_state_bucket_name = "sunbirdedaa-demo-dialstate-bucket"
 }
