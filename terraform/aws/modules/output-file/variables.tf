@@ -89,3 +89,8 @@ variable "aws_region" {
   type        = string
   description = "AWS region where the S3 bucket is located."
 }
+
+variable "aws_s3_dial_state_bucket_name" {
+  type        = string
+  description = "Bucket name for dial state storage"
+}
