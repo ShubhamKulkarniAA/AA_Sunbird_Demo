@@ -1,8 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-EKS_CLUSTER_NAME="demo-sunbirdedAA-eks" # <<< REMEMBER TO CHANGE THIS TO YOUR DESIRED EKS CLUSTER NAME
-
 # --- AWS Credential Handling ---
 if [[ -z "${AWS_ACCESS_KEY_ID:-}" ]]; then
     read -rp "Enter your AWS_ACCESS_KEY_ID: " AWS_ACCESS_KEY_ID
