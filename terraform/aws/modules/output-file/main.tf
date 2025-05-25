@@ -13,11 +13,11 @@ resource "local_sensitive_file" "global_cloud_values_yaml" {
     aws_s3_dial_state_path     = var.s3_dial_state_path,
     private_ingressgateway_ip  = var.private_ingressgateway_ip,
     encryption_string          = var.encryption_string,
-    random_string              = var.random_string
-    aws_access_key_id          = var.aws_access_key_id
-    aws_secret_access_key      = var.aws_secret_access_key
-    aws_region                 = var.aws_region
-    aws_s3_public_bucket_name  = var.aws_s3_public_bucket_name
+    random_string              = var.random_string,
+    aws_access_key_id          = var.aws_access_key_id,
+    aws_secret_access_key      = var.aws_secret_access_key,
+    aws_region                 = var.aws_region,
+    aws_s3_public_bucket_name  = var.aws_s3_public_bucket_name,
     aws_s3_private_bucket_name = var.aws_s3_private_bucket_name
   })
   filename = local.global_values_cloud_file
