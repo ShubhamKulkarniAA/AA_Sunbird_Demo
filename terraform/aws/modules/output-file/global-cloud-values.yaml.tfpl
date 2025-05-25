@@ -24,10 +24,11 @@ velero:
     backupStorageLocation:
       - name: default
         provider: "aws"
-        bucket: ${aws_s3_public_bucket_name}/backups
+        bucket: ${aws_s3_public_bucket_name}
         config:
           region: ${aws_region}
-          s3ForcePathStyle: "true"  # Optional, depends on your setup
+          s3ForcePathStyle: "true"
+          prefix: "backups"
 
 nginx-public-ingress:
   commonAnnotations:
