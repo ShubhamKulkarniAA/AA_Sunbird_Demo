@@ -62,9 +62,13 @@ create_tf_resources() {
     echo "✅ AWS resources created."
 
     echo "Configuring kubectl for EKS cluster..."
-    local EKS_CLUSTER_NAME=$(terragrunt output -no-color -json eks_cluster_name | jq -r '.')
+    local EKS_CLUSTER_NAME
+    # Correctly retrieve the 'cluster_name' from the 'eks_cluster_kubeconfig' output
+    EKS_CLUSTER_NAME=$(terragrunt output -no-color -json eks_cluster_kubeconfig | jq -r '.cluster_name')
+
     if [[ -z "$EKS_CLUSTER_NAME" || "$EKS_CLUSTER_NAME" == "null" ]]; then
-        echo "❌ Error: Could not retrieve EKS_CLUSTER_NAME from Terragrunt outputs."
+        echo "❌ Error: Could not retrieve EKS_CLUSTER_NAME from Terragrunt outputs (expected from eks_cluster_kubeconfig.cluster_name)."
+        echo "Please ensure 'eks_cluster_kubeconfig' is correctly exported and 'terragrunt apply' ran successfully."
         exit 1
     fi
     echo "Identified EKS Cluster Name: $EKS_CLUSTER_NAME"
