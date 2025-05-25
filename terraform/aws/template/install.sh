@@ -1,30 +1,22 @@
 #!/bin/bash
 set -euo pipefail
 
-# --- User Configuration Variables ---
-EKS_CLUSTER_NAME="demo-sunbirdedAA-eks" # <<< REMEMBER TO CHANGE THIS!
-# If you are not using Terragrunt's output for the cluster name,
-# you MUST update this to the actual EKS cluster name you provisioned.
+EKS_CLUSTER_NAME="demo-sunbirdedAA-eks" # <<< REMEMBER TO CHANGE THIS TO YOUR DESIRED EKS CLUSTER NAME
 
-# --- AWS Credential Handling (Interactive Prompt if not set) ---
-# Check if AWS_ACCESS_KEY_ID is set, else prompt
+# --- AWS Credential Handling ---
 if [[ -z "${AWS_ACCESS_KEY_ID:-}" ]]; then
     read -rp "Enter your AWS_ACCESS_KEY_ID: " AWS_ACCESS_KEY_ID
 fi
 
-# Check if AWS_SECRET_ACCESS_KEY is set, else prompt
 if [[ -z "${AWS_SECRET_ACCESS_KEY:-}" ]]; then
     read -rsp "Enter your AWS_SECRET_ACCESS_KEY: " AWS_SECRET_ACCESS_KEY
     echo # Newline after secret input
 fi
 
-# Check if AWS_REGION is set, else prompt
 if [[ -z "${AWS_REGION:-}" ]]; then
     read -rp "Enter your AWS_REGION (e.g., ap-south-1): " AWS_REGION
 fi
-
-# Export TF_VAR_ variables for Terraform/Terragrunt.
-# These are often picked up by AWS CLI, but explicit export is robust.
+# Export AWS credentials as environment variables for Terraform/Terragrunt
 export TF_VAR_aws_access_key_id="$AWS_ACCESS_KEY_ID"
 export TF_VAR_aws_secret_access_key="$AWS_SECRET_ACCESS_KEY"
 export TF_VAR_aws_region="$AWS_REGION"
@@ -35,15 +27,11 @@ echo "Press Enter to continue..."
 read -r # Wait for user to press Enter
 
 # --- Global Variables ---
-# Determine the base directory of the script to ensure paths are correct
 SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
-# Determine environment from the current directory name (e.g., 'template' from ~/AA_Sunbird_Demo/terraform/aws/template)
 environment=$(basename "$(pwd)")
 HELM_CHARTS_BASE_DIR="$(realpath "$SCRIPT_DIR/../../../helmcharts")"
 
 # --- Functions ---
-
-# Function to check for necessary AWS environment variables and provide guidance.
 check_aws_credentials() {
     echo -e "\nChecking AWS credentials and region..."
     if [[ -z "${AWS_ACCESS_KEY_ID:-}" || -z "${AWS_SECRET_ACCESS_KEY:-}" || -z "${AWS_REGION:-}" ]]; then
@@ -59,20 +47,17 @@ check_aws_credentials() {
 
 create_tf_backend() {
     echo "Creating Terraform state backend..."
-    # Ensure tf_backend.sh exists and is executable
     if [[ ! -f tf_backend.sh ]]; then
         echo "❌ Error: tf_backend.sh not found in $(pwd). Make sure it exists and is executable."
         exit 1
     fi
-    # Execute tf_backend.sh. The `|| { ...; }` ensures script exits if tf_backend.sh fails.
     bash tf_backend.sh || { echo "❌ Terraform state backend creation failed."; exit 1; }
     echo "✅ Terraform state backend created."
 
-    # Source tf.sh to load backend environment variables
     echo "Sourcing tf.sh to load backend environment variables..."
     if [[ ! -f tf.sh ]]; then
         echo "❌ Error: tf.sh not found. Cannot load backend environment variables."
-        exit 1 # tf.sh is mandatory for subsequent Terragrunt operations
+        exit 1
     fi
     source tf.sh || { echo "❌ Failed to source tf.sh. Backend environment variables might not be loaded."; exit 1; }
     echo "✅ Backend environment variables loaded."
@@ -135,25 +120,13 @@ create_tf_resources() {
     # --- CRITICAL ADDITION: Update kubeconfig after cluster creation ---
     echo "Attempting to configure kubectl for the newly created EKS cluster..."
 
-    # Dynamically get the EKS cluster name from Terragrunt output
-    # This assumes your Terragrunt module exports the EKS cluster name as 'eks_cluster_name'
-    local EKS_CLUSTER_NAME_FROM_TF
-    EKS_CLUSTER_NAME_FROM_TF=$(terragrunt output -no-color -json eks_cluster_name 2>/dev/null | jq -r '.')
-
-    # Use the variable from user config if TF output is empty or null (e.g., if apply was skipped/failed for EKS)
-    if [[ -z "$EKS_CLUSTER_NAME_FROM_TF" || "$EKS_CLUSTER_NAME_FROM_TF" == "null" ]]; then
-        if [[ -z "$EKS_CLUSTER_NAME" || "$EKS_CLUSTER_NAME" == "demo-sunbirdedAA-eks" ]]; then # Check for initial placeholder
-            echo "❌ Error: EKS_CLUSTER_NAME variable not set or is still a placeholder in install.sh."
-            echo "And could not retrieve EKS_CLUSTER_NAME from Terragrunt outputs."
-            echo "Please ensure your Terragrunt root module (e.g., main.hcl) exports the EKS cluster name as 'eks_cluster_name',"
-            echo "OR manually edit install.sh and set EKS_CLUSTER_NAME to your actual EKS cluster name."
-            exit 1
-        fi
-        echo "⚠️ Could not retrieve EKS_CLUSTER_NAME from Terragrunt outputs. Using manually set EKS_CLUSTER_NAME: $EKS_CLUSTER_NAME"
-    else
-        EKS_CLUSTER_NAME="$EKS_CLUSTER_NAME_FROM_TF"
-        echo "Identified EKS Cluster Name from Terragrunt output: $EKS_CLUSTER_NAME"
+    # Use the EKS_CLUSTER_NAME from the user configuration at the top of the script
+    if [[ -z "$EKS_CLUSTER_NAME" || "$EKS_CLUSTER_NAME" == "demo-sunbirdedAA-eks" ]]; then # Check for initial placeholder
+        echo "❌ Error: EKS_CLUSTER_NAME variable not set or is still a placeholder in install.sh."
+        echo "Please edit install.sh and set EKS_CLUSTER_NAME to your actual EKS cluster name."
+        exit 1
     fi
+    echo "Identified EKS Cluster Name: $EKS_CLUSTER_NAME (from user configuration)"
 
     # Ensure AWS CLI is installed
     if ! command -v aws &>/dev/null; then
@@ -532,7 +505,7 @@ main() {
 
     create_tf_backend
     backup_configs
-    create_tf_resources # This will create/update ~/.kube/config and attempt to get EKS_CLUSTER_NAME from Terragrunt output
+    create_tf_resources # This will create/update ~/.kube/config and get EKS_CLUSTER_NAME
 
     # After create_tf_resources, kubectl should now be able to connect
     echo -e "\nVerifying Kubernetes cluster connectivity after provisioning..."
