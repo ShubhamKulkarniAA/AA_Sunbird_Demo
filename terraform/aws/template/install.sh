@@ -23,6 +23,7 @@ export TF_VAR_aws_region="$AWS_REGION"
 SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
 environment=$(basename "$(pwd)")
 HELM_CHARTS_BASE_DIR="$(realpath "$SCRIPT_DIR/../../../helmcharts")"
+EKS_CLUSTER_NAME="demo-sunbirdedAA-eks"  # Default cluster name, can be overridden in install.sh
 
 # --- Functions ---
 
