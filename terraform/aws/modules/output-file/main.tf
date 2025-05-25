@@ -17,6 +17,7 @@ resource "local_sensitive_file" "global_cloud_values_yaml" {
     aws_access_key_id         = var.aws_access_key_id
     aws_secret_access_key     = var.aws_secret_access_key
     aws_region                = var.aws_region
+    aws_s3_public_bucket_name = var.aws_s3_public_bucket_name
   })
   filename = local.global_values_cloud_file
 }
