@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-EKS_CLUSTER_NAME="demo-sunbirdedAA-eks" # <<< REMEMBER TO CHANGE THIS!
+EKS_CLUSTER_NAME="sunbirdedAA-demo-eks-cluster" # <<< REMEMBER TO CHANGE THIS!
 
 # Check if AWS_ACCESS_KEY_ID is set, else prompt
 if [[ -z "${AWS_ACCESS_KEY_ID:-}" ]]; then

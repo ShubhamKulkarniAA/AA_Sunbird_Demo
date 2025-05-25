@@ -23,8 +23,8 @@ inputs = {
   subnet_ids        = dependency.network.outputs.public_subnet_ids
   cluster_role_name = local.cluster_role_name
   node_role_name    = local.node_role_name
-  instance_type     = "t3.medium"
-  desired_size      = 1
-  max_size          = 1
+  instance_type     = "c5.4xlarge"
+  desired_size      = 2
+  max_size          = 2
   min_size          = 1
 }
