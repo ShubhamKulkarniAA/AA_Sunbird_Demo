@@ -6,10 +6,13 @@ metadata:
   namespace: {{ template "kube-prometheus-stack.namespace" . }}
   labels:
     app: {{ template "kube-prometheus-stack.name" . }}-kube-etcd
-  {{- with .Values.kubeEtcd.serviceMonitor.additionalLabels }}
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
-{{ include "kube-prometheus-stack.labels" . | indent 4 }}
+    # The following lines were commented out to resolve "mapping values are not allowed in this context" error.
+    # This error typically occurs when templated values or helper functions produce malformed YAML
+    # in the 'labels' section.
+    # {{- with .Values.kubeEtcd.serviceMonitor.additionalLabels }}
+    #   {{- toYaml . | nindent 4 }}
+    # {{- end }}
+    # {{ include "kube-prometheus-stack.labels" . | indent 4 }}
 spec:
   jobLabel: jobLabel
   {{- include "servicemonitor.scrapeLimits" .Values.kubeEtcd.serviceMonitor | nindent 4 }}
