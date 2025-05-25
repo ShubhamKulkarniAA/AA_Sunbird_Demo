@@ -48,6 +48,8 @@ check_aws_credentials() {
         echo "Example: export AWS_REGION=your-aws-region"
         exit 1
     fi
+    # Export for Terraform/Terragrunt, though they often find them if configured via aws cli.
+    # Explicitly setting TF_VAR_ variables for clarity and robustness.
     export TF_VAR_aws_access_key_id="$AWS_ACCESS_KEY_ID"
     export TF_VAR_aws_secret_access_key="$AWS_SECRET_ACCESS_KEY"
     export TF_VAR_aws_region="$AWS_REGION"
@@ -83,6 +85,7 @@ create_tf_backend() {
         echo "⚠️ ~/.config/rclone/rclone.conf not found, skipping backup"
     fi
 
+    # Set KUBECONFIG explicitly (though aws eks update-kubeconfig will manage this)
 @@ -68,63 +64,51 @@ backup_configs() {
 
 clear_terragrunt_cache() {
@@ -538,6 +541,8 @@ main() {
     cd "$HELM_CHARTS_BASE_DIR" || { echo "❌ Cannot navigate to Helm charts directory: $HELM_CHARTS_BASE_DIR"; exit 1; }
     echo "Current working directory: $(pwd)"
 
+    # Export environment here so install_component can use it
+    # environment is the name of the folder within terraform/aws/ (e.g., 'template')
     export environment=$(basename "$SCRIPT_DIR")
     echo "Helm environment set to: $environment"
 
