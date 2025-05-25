@@ -33,6 +33,11 @@ variable "aws_s3_public_bucket_name" {
   description = "S3 bucket name for public data storage."
 }
 
+variable "aws_s3_private_bucket_name" {
+  type        = string
+  description = "S3 bucket name for private data storage."
+}
+
 variable "s3_private_path" {
   type        = string
   description = "S3 path for private data storage (can be used in template file)."

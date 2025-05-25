@@ -48,4 +48,6 @@ global:
 
   s3:
     bucket_name: "sunbirdedaa-demo-bucket"
+    aws_s3_public_bucket_name: "sunbirdedaa-demo-public-bucket"
+    aws_s3_private_bucket_name: "sunbirdedaa-demo-private-bucket"
     versioning_status: "Enabled"
