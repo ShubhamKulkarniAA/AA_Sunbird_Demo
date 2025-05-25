@@ -55,31 +55,24 @@ resource "null_resource" "generate_rsa_keys" {
   }
 }
 
-resource "null_resource" "upload_global_jwt_values_yaml" {
-  triggers = {
-    jwt_file_hash = filesha256(local.global_values_jwt_file_location)
-  }
-
-  provisioner "local-exec" {
-    command = "aws s3 cp ${local.global_values_jwt_file_location} s3://${var.bucket_name}/${var.environment}-global-values-jwt-tokens.yaml --region ${var.aws_region}"
-  }
+resource "aws_s3_object" "upload_global_jwt_values_yaml" {
+  bucket = var.bucket_name
+  key    = "${var.environment}-global-values-jwt-tokens.yaml"
+  source = local.global_values_jwt_file_location
+  etag   = filesha256(local.global_values_jwt_file_location)
 
   depends_on = [null_resource.generate_jwt_keys]
 }
 
-resource "null_resource" "upload_global_rsa_values_yaml" {
-  triggers = {
-    rsa_file_hash = filesha256(local.global_values_rsa_file_location)
-  }
-
-  provisioner "local-exec" {
-    command = "aws s3 cp ${local.global_values_rsa_file_location} s3://${var.bucket_name}/${var.environment}-global-values-rsa-keys.yaml --region ${var.aws_region}"
-  }
+resource "aws_s3_object" "upload_global_rsa_values_yaml" {
+  bucket = var.bucket_name
+  key    = "${var.environment}-global-values-rsa-keys.yaml"
+  source = local.global_values_rsa_file_location
+  etag   = filesha256(local.global_values_rsa_file_location)
 
   depends_on = [null_resource.generate_rsa_keys]
 }
 
-# Optional: Terrahelp encryption toggle
 resource "null_resource" "terrahelp_encryption" {
   count = var.enable_terrahelp ? 1 : 0
 
