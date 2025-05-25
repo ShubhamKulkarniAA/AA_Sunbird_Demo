@@ -23,7 +23,7 @@ resource "null_resource" "upload_global_cloud_values_yaml" {
     command = "${timestamp()}"
   }
   provisioner "local-exec" {
-    command = "aws s3 cp ${local.global_values_cloud_file} s3://${var.s3_bucket_name}/${var.environment}-global-cloud-values.yaml --region ${var.aws_region}"
+    command = "aws s3 cp ${local.global_values_cloud_file} s3://${var.bucket_name}/${var.environment}-global-cloud-values.yaml --region ${var.aws_region}"
   }
   depends_on = [local_sensitive_file.global_cloud_values_yaml]
 }

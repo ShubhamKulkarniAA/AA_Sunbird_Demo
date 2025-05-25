@@ -13,7 +13,7 @@ variable "building_block" {
   description = "Building block name to prefix resources."
 }
 
-variable "s3_bucket_name" {
+variable "bucket_name" {
   type        = string
   description = "AWS S3 bucket name where the global cloud values YAML file will be uploaded."
 }
