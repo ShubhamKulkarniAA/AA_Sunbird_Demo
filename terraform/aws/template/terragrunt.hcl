@@ -26,7 +26,7 @@ inputs = {
   cluster_role_name          = "sunbirdedAA-demo-EKSClusterRole"
   node_role_name             = "sunbirdedAA-demo-EKSNodeRole"
   instance_type              = "c5.4xlarge"
-  desired_size               = 2
+  desired_size               = 1
   max_size                   = 2
   min_size                   = 1
 

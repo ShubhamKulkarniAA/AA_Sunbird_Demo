@@ -1,20 +1,19 @@
 #!/bin/bash
 set -euo pipefail
 
+# --- Configuration Variables ---
 EKS_CLUSTER_NAME="demo-sunbirdedAA-eks" # <<< REMEMBER TO CHANGE THIS!
+HELM_CHARTS_ROOT_DIR="$(dirname "$(dirname "$(dirname "$0")")")/helmcharts"
+export HELM_CHARTS_ROOT_DIR=$(realpath "$HELM_CHARTS_ROOT_DIR")
 
-# Check if AWS_ACCESS_KEY_ID is set, else prompt
+# --- AWS Credential Prompts ---
 if [[ -z "${AWS_ACCESS_KEY_ID:-}" ]]; then
   read -rp "Enter your AWS_ACCESS_KEY_ID: " AWS_ACCESS_KEY_ID
 fi
-
-# Check if AWS_SECRET_ACCESS_KEY is set, else prompt
 if [[ -z "${AWS_SECRET_ACCESS_KEY:-}" ]]; then
   read -rsp "Enter your AWS_SECRET_ACCESS_KEY: " AWS_SECRET_ACCESS_KEY
   echo
 fi
-
-# Check if AWS_REGION is set, else prompt
 if [[ -z "${AWS_REGION:-}" ]]; then
   read -rp "Enter your AWS_REGION (e.g., us-east-1): " AWS_REGION
 fi
@@ -27,11 +26,13 @@ export TF_VAR_aws_region="$AWS_REGION"
 echo -e "\nPlease ensure you have updated all the mandatory variables as mentioned in the documentation."
 echo "The installation will fail if any of the mandatory variables are missing."
 
+# Determine the environment from the current directory name
 environment=$(basename "$(pwd)")
+
+# --- Functions ---
 
 create_tf_backend() {
     echo "Creating terraform state backend..."
-    # Ensure tf_backend.sh exists and is executable
     if [[ ! -f tf_backend.sh ]]; then
         echo "❌ Error: tf_backend.sh not found."
         exit 1
@@ -50,31 +51,30 @@ backup_configs() {
         mv ~/.kube/config ~/.kube/config."$timestamp"
         echo "✅ Backed up ~/.kube/config to ~/.kube/config.$timestamp"
     else
-        echo "⚠️  ~/.kube/config not found, skipping backup"
+        echo "⚠️ ~/.kube/config not found, skipping backup"
     fi
 
     if [[ -f ~/.config/rclone/rclone.conf ]]; then
         mv ~/.config/rclone/rclone.conf ~/.config/rclone/rclone.conf."$timestamp"
         echo "✅ Backed up ~/.config/rclone/rclone.conf to ~/.config/rclone/rclone.conf.$timestamp"
     else
-        echo "⚠️  ~/.config/rclone/rclone.conf not found, skipping backup"
+        echo "⚠️ ~/.config/rclone/rclone.conf not found, skipping backup"
     fi
 
-    # Set KUBECONFIG explicitly (though aws eks update-kubeconfig will manage this)
     export KUBECONFIG="$HOME/.kube/config"
 }
 
 clear_terragrunt_cache() {
     echo "Clearing Terragrunt cache folders..."
-    find . -type d -name ".terragrunt-cache" -exec rm -rf {} + || echo "No Terragrunt cache found or failed to delete"
+    # Using -prune to avoid descending into .terragrunt-cache directories once found
+    find . -type d -name ".terragrunt-cache" -prune -exec rm -rf {} + || echo "No Terragrunt cache found or failed to delete"
     echo "✅ Terragrunt cache cleared."
 }
 
 create_tf_resources() {
-    # Assuming tf.sh sets up necessary environment for terraform/terragrunt
     if [[ ! -f tf.sh ]]; then
-        echo "❌ Error: tf.sh not found. Skipping sourcing."
-        # exit 1 # Depending on if tf.sh is mandatory
+        echo "❌ Error: tf.sh not found. Skipping sourcing. This might lead to issues if it sets up crucial environment variables."
+        # Consider exiting here if tf.sh is truly mandatory for terragrunt
     else
         source tf.sh
     fi
@@ -101,7 +101,6 @@ create_tf_resources() {
     terragrunt apply --all -auto-approve --terragrunt-non-interactive || { echo "❌ Terragrunt apply failed."; exit 1; }
     echo "✅ AWS resources created successfully."
 
-    # --- CRITICAL ADDITION: Update kubeconfig after cluster creation ---
     echo "Attempting to configure kubectl for the newly created EKS cluster..."
     if [[ -z "$EKS_CLUSTER_NAME" || "$EKS_CLUSTER_NAME" == "<YOUR_EKS_CLUSTER_NAME>" ]]; then
         echo "❌ Error: EKS_CLUSTER_NAME variable not set or is still a placeholder."
@@ -109,7 +108,6 @@ create_tf_resources() {
         exit 1
     fi
 
-    # Ensure AWS CLI is installed
     if ! command -v aws &>/dev/null; then
         echo "❌ Error: AWS CLI not found. Please install AWS CLI to update kubeconfig."
         exit 1
@@ -122,25 +120,22 @@ create_tf_resources() {
         exit 1
     fi
     echo "✅ Kubeconfig updated successfully for EKS cluster: $EKS_CLUSTER_NAME."
-    # --- END OF CRITICAL ADDITION ---
 
     if [[ -f ~/.kube/config ]]; then
         chmod 600 ~/.kube/config
         echo "✅ Set permissions for ~/.kube/config"
     else
         echo "❌ Error: ~/.kube/config still not found after update-kubeconfig. This is unexpected and indicates a problem."
-        exit 1 # Exit because this indicates a serious problem with kubeconfig generation
+        exit 1
     fi
 }
 
 certificate_keys() {
     echo "Creating RSA keys for certificate signing..."
 
-    # Ensure 'environment' is defined or passed properly. It's defined globally in this script.
-    local cert_dir="../terraform/aws/$environment"
+    local cert_dir="terraform/aws/$environment" # Relative path to current directory
     mkdir -p "$cert_dir" || { echo "❌ Failed to create directory: $cert_dir"; exit 1; }
 
-    # Check if keys already exist to avoid overwriting
     if [[ -f "$cert_dir/certkey.pem" && -f "$cert_dir/certpubkey.pem" ]]; then
         echo "⚠️ Certificate keys already exist in $cert_dir; skipping generation."
     else
@@ -157,23 +152,22 @@ certificate_keys() {
     CERTIFICATESIGNPRKEY=$(sed ':a;N;$!ba;s/\n/\\\\n/g' "$cert_dir/certkey.pem")
     CERTIFICATESIGNPUKEY=$(sed ':a;N;$!ba;s/\n/\\\\n/g' "$cert_dir/certpubkey.pem")
 
-    # Append to global-values.yaml (ensure this file exists or is created by terragrunt)
-    if [[ ! -f "$cert_dir/global-values.yaml" ]]; then
-        echo "apiVersion: v2" > "$cert_dir/global-values.yaml" # Create if it doesn't exist
+    local global_values_path="$cert_dir/global-values.yaml"
+    if [[ ! -f "$global_values_path" ]]; then
+        echo "apiVersion: v2" > "$global_values_path" # Create if it doesn't exist
     fi
 
-    # Check if keys already exist in global-values.yaml to avoid duplication
-    if ! grep -q "CERTIFICATE_PRIVATE_KEY:" "$cert_dir/global-values.yaml"; then
+    if ! grep -q "CERTIFICATE_PRIVATE_KEY:" "$global_values_path"; then
         {
             echo
             echo "  CERTIFICATE_PRIVATE_KEY: \"$CERTPRIVATEKEY\""
             echo "  CERTIFICATE_PUBLIC_KEY: \"$CERTPUBLICKEY\""
             echo "  CERTIFICATESIGN_PRIVATE_KEY: \"$CERTIFICATESIGNPRKEY\""
             echo "  CERTIFICATESIGN_PUBLIC_KEY: \"$CERTIFICATESIGNPUKEY\""
-        } >> "$cert_dir/global-values.yaml"
-        echo "✅ Certificate keys appended to $cert_dir/global-values.yaml."
+        } >> "$global_values_path"
+        echo "✅ Certificate keys appended to $global_values_path."
     else
-        echo "⚠️ Certificate keys already found in $cert_dir/global-values.yaml; skipping append."
+        echo "⚠️ Certificate keys already found in $global_values_path; skipping append."
     fi
 }
 
@@ -194,10 +188,11 @@ certificate_config() {
 
     if [[ -z "$CERTKEY" ]]; then
         echo "Certificate RSA public key not found. Injecting..."
-        local cert_dir="../terraform/aws/$environment"
-        CERTPUBKEY=$(awk -F'"' '/CERTIFICATE_PUBLIC_KEY/{print $2}' "$cert_dir/global-values.yaml")
+        local cert_dir="terraform/aws/$environment"
+        local global_values_path="$cert_dir/global-values.yaml"
+        CERTPUBKEY=$(awk -F'"' '/CERTIFICATE_PUBLIC_KEY/{print $2}' "$global_values_path")
         if [[ -z "$CERTPUBKEY" ]]; then
-            echo "❌ Error: CERTIFICATE_PUBLIC_KEY not found in global-values.yaml."
+            echo "❌ Error: CERTIFICATE_PUBLIC_KEY not found in $global_values_path."
             return 1
         fi
         kubectl -n sunbird exec deploy/nodebb -- curl --location --request POST 'http://registry-service:8081/api/v1/PublicKey' \
@@ -214,57 +209,70 @@ install_component() {
         exit 1
     fi
 
-    # Ensure namespaces exist
-    kubectl create namespace sunbird 2>/dev/null || true
-    kubectl create namespace velero 2>/dev/null || true
-    kubectl create configmap keycloak-key -n sunbird 2>/dev/null || true # Ensure this is where it's needed
-
-    local cur_dir
-    cur_dir=$(pwd)
-    # Adjust directory to helmcharts if not already there
-    if [[ $(basename "$cur_dir") != "helmcharts" ]]; then
-        if [[ -d "../../../helmcharts" ]]; then
-            cd ../../../helmcharts || { echo "❌ Cannot navigate to ../../../helmcharts"; exit 1; }
-        else
-            echo "❌ helmcharts directory not found at ../../../helmcharts. Please run this script from the correct working directory."
-            exit 1
-        fi
-    fi
+    # Ensure necessary namespaces exist. Added to install_helm_components for efficiency.
+    # kubectl create namespace sunbird 2>/dev/null || true
+    # kubectl create namespace velero 2>/dev/null || true
+    # kubectl create configmap keycloak-key -n sunbird 2>/dev/null || true
 
     local component="$1"
-    echo -e "\n--- Installing/Upgrading component: $component ---"
+    local chart_path="$HELM_CHARTS_ROOT_DIR/$component"
+    echo -e "\n--- Installing/Upgrading component: $component from $chart_path ---"
+
+    if [[ ! -d "$chart_path" ]]; then
+        echo "❌ Error: Helm chart directory not found for component '$component' at: $chart_path"
+        exit 1
+    fi
+    if [[ ! -f "$chart_path/values.yaml" ]]; then
+        echo "❌ Error: values.yaml not found for component '$component' at: $chart_path/values.yaml"
+        exit 1
+    fi
 
     local ed_values_flag=""
-    if [[ -f "$component/ed-values.yaml" ]]; then
-        ed_values_flag="-f $component/ed-values.yaml"
+    if [[ -f "$chart_path/ed-values.yaml" ]]; then
+        ed_values_flag="-f $chart_path/ed-values.yaml"
+    fi
+
+    local global_values_path="terraform/aws/$environment/global-values.yaml"
+    local global_cloud_values_path="terraform/aws/$environment/global-cloud-values.yaml"
+
+    if [[ ! -f "$global_values_path" ]]; then
+        echo "❌ Error: global-values.yaml not found at: $global_values_path"
+        exit 1
+    fi
+    if [[ ! -f "$global_cloud_values_path" ]]; then
+        echo "❌ Error: global-cloud-values.yaml not found at: $global_cloud_values_path"
+        exit 1
     fi
 
     if [[ "$component" == "learnbb" ]]; then
         echo "Processing learnbb specific actions..."
+        # Note: If this job deletion is crucial for a clean install, consider it
+        # before the helm upgrade command for 'learnbb' itself.
         if kubectl get job keycloak-kids-keys -n sunbird &>/dev/null; then
             echo "Deleting existing job keycloak-kids-keys to ensure clean installation..."
-            kubectl delete job keycloak-kids-keys -n sunbird --timeout=60s || echo "⚠️ Failed to delete keycloak-kids-keys job, might already be gone or stuck."
+            # Using --wait=false to not block if job is stuck deleting, relies on subsequent Helm install to recreate
+            kubectl delete job keycloak-kids-keys -n sunbird --timeout=60s --wait=false || echo "⚠️ Failed to delete keycloak-kids-keys job, might already be gone or stuck."
         fi
 
-        # Always ensure certificate_keys is called if not already done, for learnbb specifically
-        certificate_keys
+        certificate_keys # Ensure certificate keys are generated/present before learnbb is installed
     fi
 
     echo "Running helm upgrade --install for $component..."
-    helm upgrade --install "$component" "$component" --namespace sunbird \
-        -f "$component/values.yaml" $ed_values_flag \
-        -f "../terraform/aws/$environment/global-values.yaml" \
-        -f "../terraform/aws/$environment/global-cloud-values.yaml" \
-        --timeout 30m --debug --wait --wait-for-jobs || { echo "❌ Helm installation failed for $component."; exit 1; }
+    helm upgrade --install "$component" "$chart_path" --namespace sunbird \
+        -f "$chart_path/values.yaml" $ed_values_flag \
+        -f "$global_values_path" \
+        -f "$global_cloud_values_path" \
+        --timeout 30m --debug --wait --wait-for-jobs || { echo "❌ Helm installation failed for $component. Check logs above for details."; exit 1; }
     echo "✅ Component $component installed/upgraded successfully."
-
-    # Return to original directory (important for subsequent component installations if paths are relative)
-    cd "$cur_dir" || { echo "❌ Failed to return to original directory: $cur_dir"; exit 1; }
 }
 
 install_helm_components() {
-    # It's better to ensure these are in relative paths to where the script assumes 'helmcharts' is
-    # For now, assuming script runs from a directory where 'helmcharts' is ../../../helmcharts
+    # Ensure namespaces and common configmaps exist once before any Helm installs
+    echo -e "\nEnsuring namespaces and common ConfigMaps for Helm deployments..."
+    kubectl create namespace sunbird 2>/dev/null || true
+    kubectl create namespace velero 2>/dev/null || true
+    kubectl create configmap keycloak-key -n sunbird 2>/dev/null || true # Ensure this is where it's needed and what it contains
+
     local components=("monitoring" "edbb" "learnbb" "knowledgebb" "obsrvbb" "inquirybb" "additional")
     for component in "${components[@]}"; do
         install_component "$component"
@@ -327,7 +335,7 @@ dns_mapping() {
         sleep 10
     done
 
-    local timeout=$((SECONDS + 1200))  # 20 minutes timeout for DNS propagation
+    local timeout=$((SECONDS + 1200))   # 20 minutes timeout for DNS propagation
     local check_interval=10
 
     echo -e "\nAdd or update your DNS A record for domain $domain_name to point to IP: $public_ip"
@@ -348,39 +356,117 @@ dns_mapping() {
 
 check_pod_status() {
     local namespace="sunbird"
-    # Added nodebb to components for status check since it's critical
-    local components=("learnbb" "knowledgebb" "nodebb" "obsrvbb" "inquirybb" "edbb" "monitoring" "additional")
+    # Mapping of Helm chart name to a representative label for checking pod readiness.
+    # Note: For Prometheus/Loki, their labels might be different.
+    # You might need to adjust these labels based on what's actually in your Helm chart's generated resources.
+    declare -A component_labels
+    component_labels=(
+        ["monitoring"]="app.kubernetes.io/name=monitoring" # Or specific components like 'app.kubernetes.io/name=grafana'
+        ["edbb"]="app=edbb"
+        ["learnbb"]="app=learnbb"
+        ["knowledgebb"]="app=knowledgebb"
+        ["obsrvbb"]="app=obsrvbb"
+        ["inquirybb"]="app=inquirybb"
+        ["additional"]="app=additional" # This might be too generic, consider specific app labels within 'additional'
+    )
 
     echo -e "\n🧪 Checking pod status in namespace $namespace..."
     local overall_success=true
-    for pod_label in "${components[@]}"; do
-        echo -e "\nChecking pod(s) with label app=$pod_label in namespace $namespace"
-        # Using a safer way to wait for pods, ensuring they are available before checking readiness
-        if ! kubectl wait --for=condition=available deployment -l app="$pod_label" -n "$namespace" --timeout=300s 2>/dev/null && \
-           ! kubectl wait --for=condition=ready pod -l app="$pod_label" -n "$namespace" --timeout=300s; then
-            echo "❌ Pod(s) with app=$pod_label are not ready after 300 seconds"
-            kubectl get pods -l app="$pod_label" -n "$namespace"
-            kubectl describe pods -l app="$pod_label" -n "$namespace" | head -n 30 # Show top of describe for quick debug
-            overall_success=false
-        else
-            echo "✅ Pod(s) with app=$pod_label are ready"
+
+    for component in "${!component_labels[@]}"; do
+        local label="${component_labels[$component]}"
+        echo -e "\nChecking pod(s) for component: '$component' with label: '$label' in namespace $namespace"
+
+        local status_check_succeeded=false
+        # Check Deployments
+        if kubectl get deployment -l "$label" -n "$namespace" &>/dev/null; then
+            if kubectl wait --for=condition=available deployment -l "$label" -n "$namespace" --timeout=300s; then
+                echo "✅ Deployment(s) for '$component' with label '$label' are available."
+                status_check_succeeded=true
+            else
+                echo "❌ Deployment(s) for '$component' with label '$label' are not available after 300 seconds."
+                kubectl get deployment -l "$label" -n "$namespace"
+                kubectl describe deployment -l "$label" -n "$namespace" | head -n 30
+                overall_success=false
+            fi
+        fi
+
+        # Check StatefulSets (relevant for Loki, Prometheus, Alertmanager in monitoring)
+        if kubectl get statefulset -l "$label" -n "$namespace" &>/dev/null; then
+             if kubectl wait --for=condition=ready statefulset -l "$label" -n "$namespace" --timeout=300s; then
+                echo "✅ StatefulSet(s) for '$component' with label '$label' are ready."
+                status_check_succeeded=true
+            else
+                echo "❌ StatefulSet(s) for '$component' with label '$label' are not ready after 300 seconds."
+                kubectl get statefulset -l "$label" -n "$namespace"
+                kubectl describe statefulset -l "$label" -n "$namespace" | head -n 30
+                overall_success=false
+            fi
+        fi
+
+        # Check DaemonSets (relevant for Promtail, Node Exporter in monitoring)
+        if kubectl get daemonset -l "$label" -n "$namespace" &>/dev/null; then
+             if kubectl wait --for=condition=available daemonset -l "$label" -n "$namespace" --timeout=300s; then
+                echo "✅ DaemonSet(s) for '$component' with label '$label' are available."
+                status_check_succeeded=true
+            else
+                echo "❌ DaemonSet(s) for '$component' with label '$label' are not available after 300 seconds."
+                kubectl get daemonset -l "$label" -n "$namespace"
+                kubectl describe daemonset -l "$label" -n "$namespace" | head -n 30
+                overall_success=false
+            fi
+        fi
+
+        # Fallback for pods if specific controllers not found or for jobs
+        if ! "$status_check_succeeded"; then
+            echo "Attempting to check raw pods for '$component' with label '$label'..."
+            # Check if any pods with the label exist
+            if kubectl get pods -l "$label" -n "$namespace" &>/dev/null; then
+                # Ensure all pods for this label are ready
+                if kubectl wait --for=condition=ready pod -l "$label" -n "$namespace" --timeout=300s; then
+                    echo "✅ Pod(s) for '$component' with label '$label' are ready."
+                else
+                    echo "❌ Pod(s) for '$component' with label '$label' are not ready after 300 seconds (raw check)."
+                    kubectl get pods -l "$label" -n "$namespace"
+                    kubectl describe pods -l "$label" -n "$namespace" | head -n 30
+                    overall_success=false
+                fi
+            else
+                echo "⚠️ No pods found with label '$label' for component '$component'. This might be expected if the component is not deployed via a Deployment/StatefulSet/DaemonSet or uses different labels."
+                # Don't set overall_success=false here, as it might be a Job or other ephemeral resource.
+                # If this is a critical component, you might want to adjust the logic.
+            fi
         fi
     done
 
     if ! "$overall_success"; then
-        echo "⚠️ Some pods are not in a ready state. Manual inspection recommended."
-        exit 1 # Consider exiting if critical pods are not ready
+        echo "⚠️ One or more critical components' pods are not in a ready state. Manual inspection recommended."
+        exit 1 # Exit if critical pods are not ready
     fi
     echo "✅ All essential pods in namespace $namespace are reported as ready."
 }
+
 
 # --- Main execution flow ---
 main() {
     echo "Starting installation process..."
 
-    # Ensure AWS CLI is present for update-kubeconfig later
     if ! command -v aws &>/dev/null; then
         echo "❌ AWS CLI not found. Please install it (e.g., 'sudo apt install awscli')."
+        exit 1
+    fi
+
+    # Ensure necessary tooling is present
+    if ! command -v helm &>/dev/null; then
+        echo "❌ Helm not found. Please install Helm before proceeding."
+        exit 1
+    fi
+    if ! command -v terragrunt &>/dev/null; then
+        echo "❌ Terragrunt not found. Please install Terragrunt before proceeding."
+        exit 1
+    fi
+    if ! command -v jq &>/dev/null; then
+        echo "❌ JQ not found. Please install JQ (sudo apt install jq) before proceeding."
         exit 1
     fi
 
@@ -388,7 +474,6 @@ main() {
     backup_configs
     create_tf_resources # This will now create/update ~/.kube/config
 
-    # After create_tf_resources, kubectl should now be able to connect
     echo -e "\nVerifying Kubernetes cluster connectivity after provisioning..."
     kubectl cluster-info || { echo "❌ kubectl cluster-info failed after provisioning. Manual debug required."; exit 1; }
     kubectl get nodes || { echo "❌ kubectl get nodes failed after provisioning. Manual debug required."; exit 1; }
