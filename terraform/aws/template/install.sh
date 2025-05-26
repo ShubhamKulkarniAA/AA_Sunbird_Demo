@@ -322,7 +322,7 @@ install_component() {
         -f "$chart_path/values.yaml" $ed_values_flag \
         -f "$global_values_path" \
         -f "$global_cloud_values_path" \
-        --timeout 45m --debug --wait --wait-for-jobs || { echo "❌ Helm installation failed for $component. Check logs above for details."; exit 1; }
+        --timeout 30m --debug --wait --wait-for-jobs || { echo "❌ Helm installation failed for $component. Check logs above for details."; exit 1; }
     echo "✅ Component $component installed/upgraded successfully."
 }
 
@@ -332,7 +332,7 @@ install_helm_components() {
     # --- START OF MODIFICATION ---
     # Removed "monitoring" from the list of components to install.
     # You can install it separately later if needed.
-    local components=("edbb" "learnbb" "knowledgebb" "obsrvbb" "inquirybb" "additional")
+    local components=("learnbb" "edbb" "knowledgebb" "obsrvbb" "inquirybb" "additional")
     # --- END OF MODIFICATION ---
 
     for component in "${components[@]}"; do
