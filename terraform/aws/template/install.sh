@@ -24,7 +24,7 @@ if [[ -z "${AWS_SECRET_ACCESS_KEY:-}" ]]; then
   echo # Newline after silent input
 fi
 if [[ -z "${AWS_REGION:-}" ]]; then
-  read -rp "Enter your AWS_REGION (e.g., us-east-1): " AWS_REGION
+  read -rp "Enter your AWS_REGION (e.g., ap-south-1): " AWS_REGION
 fi
 
 # Export terraform variables from the AWS environment variables
@@ -196,15 +196,22 @@ certificate_keys() {
         # Append only if not already present
         cp "$global_values_path" "$temp_global_values"
         {
+            echo "global:" # Ensure 'global' block exists if it's a new file or not already present
             echo "  CERTIFICATE_PRIVATE_KEY: \"$CERTPRIVATEKEY\""
             echo "  CERTIFICATE_PUBLIC_KEY: \"$CERTPUBLICKEY\""
             echo "  CERTIFICATESIGN_PRIVATE_KEY: \"$CERTIFICATESIGNPRKEY\""
             echo "  CERTIFICATESIGN_PUBLIC_KEY: \"$CERTIFICATESIGNPUKEY\""
+            # ADDED THIS NEW LINE:
+            echo "  mobile_devicev2_key1: \"$CERTPRIVATEKEY\"" # Map the key adminutil is looking for
+
         } >> "$temp_global_values"
         mv "$temp_global_values" "$global_values_path"
         echo "✅ Certificate keys appended to $global_values_path."
     else
         echo "⚠️ Certificate keys already found in $global_values_path; skipping append."
+        # If keys exist, also ensure mobile_devicev2_key1 is updated/present via yq
+        yq e ".global.mobile_devicev2_key1 = \"$CERTPRIVATEKEY\"" -i "$global_values_path"
+        echo "✅ Ensured mobile_devicev2_key1 is present and updated in $global_values_path."
     fi
 }
 
@@ -542,6 +549,10 @@ main() {
     fi
     if ! command -v openssl &>/dev/null; then
         echo "❌ OpenSSL not found. Please install OpenSSL (e.g., 'sudo apt install openssl'). It is required for certificate key generation."
+        exit 1
+    fi
+    if ! command -v yq &>/dev/null; then
+        echo "❌ yq not found. Please install yq (e.g., 'sudo snap install yq' or 'sudo apt install yq' if available)."
         exit 1
     fi
     echo "✅ All required tools are present."
