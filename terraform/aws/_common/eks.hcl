@@ -25,7 +25,7 @@ inputs = {
   node_role_name    = local.node_role_name
   instance_type     = "c5.4xlarge"
   disk_size         = 500 # Increase to 500GiB or more
-  desired_size      = 5
-  max_size          = 4
+  desired_size      = 4
+  max_size          = 5
   min_size          = 3
 }
