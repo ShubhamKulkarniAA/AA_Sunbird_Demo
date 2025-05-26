@@ -13,12 +13,14 @@ podAnnotations: {}
 commonAnnotations:
   reloader.stakater.com/auto: "true"
 
-podSecurityContext: {}
+podSecurityContext:
+  {}
   # runAsNonRoot: true
   # runAsUser: 1001
   # fsGroup: 1001
 
-securityContext: {}
+securityContext:
+  {}
   # readOnlyRootFilesystem: false
   # capabilities:
   #   drop:
@@ -31,7 +33,8 @@ service:
       port: 4000
       targetPort: 4000
 
-ingress: {}
+ingress:
+  {}
   # enabled: false
   # annotations: {}
   # hosts:
@@ -41,8 +44,8 @@ ingress: {}
 
 resources:
   requests:
-    cpu: 100m
-    memory: 100M
+    cpu: 256m
+    memory: 500M
   limits:
     cpu: 1
     memory: 1G
@@ -106,12 +109,14 @@ serviceMonitor:
   jobLabel: "app.kubernetes.io/name"
 
 # Example values.yaml structure
-initContainers: {}
+initContainers:
+  {}
   # - name: init-myservice
   #   image: busybox:1.28
   #   command: ['sh', '-c', "until nslookup kubernetes.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local; do echo waiting for myservice; sleep 2; done"]
 
-sidecars: {}
+sidecars:
+  {}
   # - name: log-reader # Sidecar container
   #   image: busybox # Use another busybox image
   #   command: ["/bin/sh"] # Override the default command
