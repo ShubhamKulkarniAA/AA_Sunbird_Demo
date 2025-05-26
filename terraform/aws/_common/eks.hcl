@@ -28,4 +28,8 @@ inputs = {
   desired_size      = 4
   max_size          = 5
   min_size          = 3
+
+  # --- ADDED: Enable AWS EBS CSI Driver ---
+  enable_ebs_csi    = true
+
 }
