@@ -521,7 +521,7 @@ check_pod_status() {
         echo "⚠️ One or more critical components' pods are not in a ready state. Manual inspection recommended."
     else
         echo "✅ All essential pods in namespace $namespace are reported as ready."
-    S}
+    }
 
 
 # --- Main execution flow ---
