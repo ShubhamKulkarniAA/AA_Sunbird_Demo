@@ -1,0 +1,85 @@
+global:
+  CERTIFICATE_PRIVATE_KEY: "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCgGK28kxLNNrhz\nC+owIQ6GiHDIvgRLuW5iOTQT1DYfJ8GCsq6evtA3w5feMi3lNW8DrLQjeUfTC2LS\nCnG7Yrb3BQNhw2+b4lstV6OFoVhTPxDnr7NybWzmHQOE65ztPF+uTu3FYPfVFvsK\nQhtmk0NJcvr55wpVW6CjbTp2vBylZFhmW9BrJYY6C2/QEfZ8MihcTxSJrAH+Ddtn\n0TVeRolh0V39nV6TzeWfI6WT2HI8HoiZ/xBbWcOyRxDi4wDGygSkVd9FoGr+sRlE\n2n67W9qFIDwkfTzhzl5enENb/z0twGsm1etVpxDJ7VuyQ8HQ2QK5zxnjLFz2mVXE\n3bCSt22/AgMBAAECggEABgK3Lx/EcnDt/t/BJJpxHarstRSxO5iUJNrp8h6jA4tu\nD/aeaLZYQee1gXGX2IWni9dFkhlhEXLZfHJI79SWcvK8vERmoc8fRjYGnSNAGiwB\neflWPuMN1hvbwHdKFnwQSY6MDb+EvnrU5P8zYSgBPDY1ZwF+GVNN1iTpL4EDgFAT\nbUc7jnf3x18riHDwqN7k95S3YUB8vA3W4jcpfwyw8UmrcvuP9UjUDm0LHbNCFFG3\negVmI1CkL0m8BaZNEvSQNhyo3HmmTcoms8IbD4NnXNYigXcmDplVf205CNfOL8yG\niaHLUkzT4N9pMxNifiW87eapl4NAAa9UyJSoYqWzSQKBgQDDA+voNTUn/56pAfeG\nH1EZVdiEWc/Y1qY57i3Qlau1XplpGsRzFaooA9KoXUkHorUa4wo+//dNFg82Wu8i\nQf3CBhy5xm2VrB5y/bJdjHmePWoRhT4zwBhrLbJFN/wrArdTUDigJcym6gY4S6G2\nN77Tzb6tTgTugJTWbDmKhTr5mQKBgQDSKUzp2r3u3azTVK/V4JfUI5OLJOWuo1A6\nNLRUr9KmBwEnH5uXmOau9krYncjscCCrzdvh+1KzYRPfzB6o9iOxGC0UhhB4QviP\ntbkvh2B0IG9u3UrXog9q6yExKtfxEkBA3gTfzca7D15qxsLCjk9KKssHEdCoKP1s\n/d54Ae2pFwKBgBs9+f93J1TOFZjgaHZ4+3hBkLx0W1+cJJ5lEktYDSOJ8n5HOfgl\np55tYkkYtvH1Hb2Cx9SjJyXClh9utocfltY6ylp9SKOm5p4DqJ3+2KJtS9rktRq/\nk+ms+YFH39cWSwu9YhulDCCpAnNsxUtSIDswO5m0E2ZJ2gDWH3elQubJAoGAbYiD\nArs0FMPKaJaR0mntF+623mWLo/qQPNXtStocctXhvu9VW6ygRn4tQjryVnCWRpTT\nTjN7xewJvLGZJTysG4fbLwA0o0lcXSI8c04eckfZbDG/6SUY3gPQV9zZkVaO0IAm\nkDKiqin3brVLGrWrE5+8E2IwmwRKGT0zbt6qbF8CgYAQdpyOuXr5HUAKERjJO/k4\nsRA1C9y9U0DN8ie2yvnfO8JRjw/Rrv36vrwtaWA0d2QIC9A1tSeVUjQwLi3EB48c\ngAMfNgPKdDWklVB0fl/4+zEjjDLDBHDWB66THs4a3wg94EgLK2tCnahrjSZK5BE+\nI4Ij/Odu9RmPXO0fjGn9uw==\n-----END PRIVATE KEY-----\n" # Your actual private key here
+  CERTIFICATE_PUBLIC_KEY: "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAoBitvJMSzTa4cwvqMCEO\nhohwyL4ES7luYjk0E9Q2HyfBgrKunr7QN8OX3jIt5TVvA6y0I3lH0wti0gpxu2K2\n9wUDYcNvm+JbLVejhaFYUz8Q56+zcm1s5h0DhOuc7Txfrk7txWD31Rb7CkIbZpND\nSXL6+ecKVVugo206drwcpWRYZlvQayWGOgtv0BH2fDIoXE8UiawB/g3bZ9E1XkaJ\nYdFd/Z1ek83lnyOlk9hyPB6Imf8QW1nDskcQ4uMAxsoEpFXfRaBq/rEZRNp+u1va\nhSA8JH084c5eXpxDW/89LcBrJtXrVacQye1bskPB0NkCuc8Z4yxc9plVxN2wkrdt\nvwIDAQAB\n-----END PUBLIC KEY-----\n" # Your actual public key here
+  CERTIFICATESIGN_PRIVATE_KEY: "-----BEGIN PRIVATE KEY-----\\\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCgGK28kxLNNrhz\\\nC+owIQ6GiHDIvgRLuW5iOTQT1DYfJ8GCsq6evtA3w5feMi3lNW8DrLQjeUfTC2LS\\\nCnG7Yrb3BQNhw2+b4lstV6OFoVhTPxDnr7NybWzmHQOE65ztPF+uTu3FYPfVFvsK\\\nQhtmk0NJcvr55wpVW6CjbTp2vBylZFhmW9BrJYY6C2/QEfZ8MihcTxSJrAH+Ddtn\\\n0TVeRolh0V39nV6TzeWfI6WT2HI8HoiZ/xBbWcOyRxDi4wDGygSkVd9FoGr+sRlE\\\n2n67W9qFIDwkfTzhzl5enENb/z0twGsm1etVpxDJ7VuyQ8HQ2QK5zxnjLFz2mVXE\\\n3bCSt22/AgMBAAECggEABgK3Lx/EcnDt/t/BJJpxHarstRSxO5iUJNrp8h6jA4tu\\\nD/aeaLZYQee1gXGX2IWni9dFkhlhEXLZfHJI79SWcvK8vERmoc8fRjYGnSNAGiwB\\\neflWPuMN1hvbwHdKFnwQSY6MDb+EvnrU5P8zYSgBPDY1ZwF+GVNN1iTpL4EDgFAT\\\nbUc7jnf3x18riHDwqN7k95S3YUB8vA3W4jcpfwyw8UmrcvuP9UjUDm0LHbNCFFG3\\\negVmI1CkL0m8BaZNEvSQNhyo3HmmTcoms8IbD4NnXNYigXcmDplVf205CNfOL8yG\\\niaHLUkzT4N9pMxNifiW87eapl4NAAa9UyJSoYqWzSQKBgQDDA+voNTUn/56pAfeG\\\nH1EZVdiEWc/Y1qY57i3Qlau1XplpGsRzFaooA9KoXUkHorUa4wo+//dNFg82Wu8i\\\nQf3CBhy5xm2VrB5y/bJdjHmePWoRhT4zwBhrLbJFN/wrArdTUDigJcym6gY4S6G2\\\nN77Tzb6tTgTugJTWbDmKhTr5mQKBgQDSKUzp2r3u3azTVK/V4JfUI5OLJOWuo1A6\\\nNLRUr9KmBwEnH5uXmOau9krYncjscCCrzdvh+1KzYRPfzB6o9iOxGC0UhhB4QviP\\\ntbkvh2B0IG9u3UrXog9q6yExKtfxEkBA3gTfzca7D15qxsLCjk9KKssHEdCoKP1s\\\n/d54Ae2pFwKBgBs9+f93J1TOFZjgaHZ4+3hBkLx0W1+cJJ5lEktYDSOJ8n5HOfgl\\\np55tYkkYtvH1Hb2Cx9SjJyXClh9utocfltY6ylp9SKOm5p4DqJ3+2KJtS9rktRq/\\\nk+ms+YFH39cWSwu9YhulDCCpAnNsxUtSIDswO5m0E2ZJ2gDWH3elQubJAoGAbYiD\\\nArs0FMPKaJaR0mntF+623mWLo/qQPNXtStocctXhvu9VW6ygRn4tQjryVnCWRpTT\\\nTjN7xewJvLGZJTysG4fbLwA0o0lcXSI8c04eckfZbDG/6SUY3gPQV9zZkVaO0IAm\\\nkDKiqin3brVLGrWrE5+8E2IwmwRKGT0zbt6qbF8CgYAQdpyOuXr5HUAKERjJO/k4\\\nsRA1C9y9U0DN8ie2yvnfO8JRjw/Rrv36vrwtaWA0d2QIC9A1tSeVUjQwLi3EB48c\\\ngAMfNgPKdDWklVB0fl/4+zEjjDLDBHDWB66THs4a3wg94EgLK2tCnahrjSZK5BE+\\\nI4Ij/Odu9RmPXO0fjGn9uw==\\\n-----END PRIVATE KEY-----" # Your actual private key here
+  CERTIFICATESIGN_PUBLIC_KEY: "-----BEGIN PUBLIC KEY-----\\\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAoBitvJMSzTa4cwvqMCEO\\\nhohwyL4ES7luYjk0E9Q2HyfBgrKunr7QN8OX3jIt5TVvA6y0I3lH0wti0gpxu2K2\\\n9wUDYcNvm+JbLVejhaFYUz8Q56+zcm1s5h0DhOuc7Txfrk7txWD31Rb7CkIbZpND\\\nSXL6+ecKVVugo206drwcpWRYZlvQayWGOgtv0BH2fDIoXE8UiawB/g3bZ9E1XkaJ\\\nYdFd/Z1ek83lnyOlk9hyPB6Imf8QW1nDskcQ4uMAxsoEpFXfRaBq/rEZRNp+u1va\\\nhSA8JH084c5eXpxDW/89LcBrJtXrVacQye1bskPB0NkCuc8Z4yxc9plVxN2wkrdt\\\nvwIDAQAB\\\n-----END PUBLIC KEY-----" # Your actual public key here
+  building_block: "sunbirdedAA"
+  env: "demo"
+  environment: "demo"
+  release_version: release-7.0.0
+  domain: "sunbird.alignedautomation.com"
+  aws_account: "339712817291"
+  cloud_storage_region: "ap-south-1"
+  sunbird_cloud_storage_provider: "aws"
+  checkpoint_store_type: "aws"
+  cloud_service_provider: "aws"
+  cloud_storage_provider: "aws"
+  sunbird_google_captcha_site_key:
+  google_captcha_private_key:
+  sunbird_google_oauth_clientId:
+  sunbird_google_oauth_clientSecret:
+  mail_server_from_email: ""
+  mail_server_password: ""
+  mail_server_host: smtp.sendgrid.net
+  mail_server_port: "587"
+  mail_server_username: apikey
+  sunbird_msg_91_auth: ""
+  sunbird_msg_sender: ""
+  youtube_apikey: ""
+  merge_domain_status: "false"
+  merge_domain: ""
+  proxy_private_key: |
+    REPLACE_ME
+  proxy_certificate: |
+    REPLACE_ME
+  cloud_provider: "aws"
+  # Add your infra configs here:
+  vpc:
+    cidr_block: "10.0.0.0/16"
+    public_subnet_cidr_1: "10.0.1.0/24"
+    public_subnet_cidr_2: "10.0.2.0/24"
+    availability_zone_1: "ap-south-1a"
+    availability_zone_2: "ap-south-1b"
+  eks:
+    cluster_name: "demo-sunbirdedAA-eks"
+    cluster_role_name: "sunbirdedAA-demo-EKSClusterRole"
+    node_role_name: "sunbirdedAA-demo-EKSNodeRole"
+    instance_type: "c5.4xlarge"
+    disk_size: 100 # Increase to 100GiB or more
+    desired_size: 1
+    max_size: 2
+    min_size: 1
+  s3:
+    bucket_name: "sunbirdedaa-demo-bucket"
+    aws_s3_public_bucket_name: "sunbirdedaa-demo-public-bucket"
+    aws_s3_private_bucket_name: "sunbirdedaa-demo-private-bucket"
+    versioning_status: "Enabled"
+  mobile_devicev2_key1: |
+    -----BEGIN PRIVATE KEY-----
+    MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCgGK28kxLNNrhz
+    C+owIQ6GiHDIvgRLuW5iOTQT1DYfJ8GCsq6evtA3w5feMi3lNW8DrLQjeUfTC2LS
+    CnG7Yrb3BQNhw2+b4lstV6OFoVhTPxDnr7NybWzmHQOE65ztPF+uTu3FYPfVFvsK
+    Qhtmk0NJcvr55wpVW6CjbTp2vBylZFhmW9BrJYY6C2/QEfZ8MihcTxSJrAH+Ddtn
+    0TVeRolh0V39nV6TzeWfI6WT2HI8HoiZ/xBbWcOyRxDi4wDGygSkVd9FoGr+sRlE
+    2n67W9qFIDwkfTzhzl5enENb/z0twGsm1etVpxDJ7VuyQ8HQ2QK5zxnjLFz2mVXE
+    3bCSt22/AgMBAAECggEABgK3Lx/EcnDt/t/BJJpxHarstRSxO5iUJNrp8h6jA4tu
+    D/aeaLZYQee1gXGX2IWni9dFkhlhEXLZfHJI79SWcvK8vERmoc8fRjYGnSNAGiwB
+    eflWPuMN1hvbwHdKFnwQSY6MDb+EvnrU5P8zYSgBPDY1ZwF+GVNN1iTpL4EDgFAT
+    bUc7jnf3x18riHDwqN7k95S3YUB8vA3W4jcpfwyw8UmrcvuP9UjUDm0LHbNCFFG3
+    egVmI1CkL0m8BaZNEvSQNhyo3HmmTcoms8IbD4NnXNYigXcmDplVf205CNfOL8yG
+    iaHLUkzT4N9pMxNifiW87eapl4NAAa9UyJSoYqWzSQKBgQDDA+voNTUn/56pAfeG
+    H1EZVdiEWc/Y1qY57i3Qlau1XplpGsRzFaooA9KoXUkHorUa4wo+//dNFg82Wu8i
+    Qf3CBhy5xm2VrB5y/bJdjHmePWoRhT4zwBhrLbJFN/wrArdTUDigJcym6gY4S6G2
+    N77Tzb6tTgTugJTWbDmKhTr5mQKBgQDSKUzp2r3u3azTVK/V4JfUI5OLJOWuo1A6
+    NLRUr9KmBwEnH5uXmOau9krYncjscCCrzdvh+1KzYRPfzB6o9iOxGC0UhhB4QviP
+    tbkvh2B0IG9u3UrXog9q6yExKtfxEkBA3gTfzca7D15qxsLCjk9KKssHEdCoKP1s
+    /d54Ae2pFwKBgBs9+f93J1TOFZjgaHZ4+3hBkLx0W1+cJJ5lEktYDSOJ8n5HOfgl
+    p55tYkkYtvH1Hb2Cx9SjJyXClh9utocfltY6ylp9SKOm5p4DqJ3+2KJtS9rktRq/
+    k+ms+YFH39cWSwu9YhulDCCpAnNsxUtSIDswO5m0E2ZJ2gDWH3elQubJAoGAbYiD
+    Ars0FMPKaJaR0mntF+623mWLo/qQPNXtStocctXhvu9VW6ygRn4tQjryVnCWRpTT
+    TjN7xewJvLGZJTysG4fbLwA0o0lcXSI8c04eckfZbDG/6SUY3gPQV9zZkVaO0IAm
+    kDKiqin3brVLGrWrE5+8E2IwmwRKGT0zbt6qbF8CgYAQdpyOuXr5HUAKERjJO/k4
+    sRA1C9y9U0DN8ie2yvnfO8JRjw/Rrv36vrwtaWA0d2QIC9A1tSeVUjQwLi3EB48c
+    gAMfNgPKdDWklVB0fl/4+zEjjDLDBHDWB66THs4a3wg94EgLK2tCnahrjSZK5BE+
+    I4Ij/Odu9RmPXO0fjGn9uw==
+    -----END PRIVATE KEY-----
