@@ -329,11 +329,15 @@ install_component() {
 install_helm_components() {
     setup_kubernetes_prerequisites # Run this once for all components
 
-    local components=("monitoring" "edbb" "learnbb" "knowledgebb" "obsrvbb" "inquirybb" "additional")
+    # --- START OF MODIFICATION ---
+    # Removed "monitoring" from the list of components to install.
+    # You can install it separately later if needed.
+    local components=("edbb" "learnbb" "knowledgebb" "obsrvbb" "inquirybb" "additional")
+    # --- END OF MODIFICATION ---
+
     for component in "${components[@]}"; do
         install_component "$component"
-    EOD
-done
+    done # This `done` correctly closes the `for` loop
     echo "✅ All specified Helm components installed."
 }
 
@@ -487,7 +491,7 @@ check_pod_status() {
         fi
 
         # Fallback raw pod check if no specific controller found or for jobs/other resources
-        if ! "$status_check_succeeded"; then
+        if ! "$status_check_succeeded"; then # This condition might need adjustment depending on overall logic.
             echo "  Attempting to check raw pods for '$component' with label selector '$label_selector' (if any exist)..."
             if kubectl get pods -l "$label_selector" -n "$namespace" &>/dev/null; then
                 echo "  Waiting for pod(s) for '$component' to be ready..."
@@ -502,15 +506,12 @@ check_pod_status() {
             else
                 echo "  ⚠️ No Deployments, StatefulSets, DaemonSets, or raw pods found with label selector '$label_selector' for component '$component'."
                 echo "  This might be expected if the component is purely a Job or uses different labels not covered."
-            C1
-fi
+            fi
         fi
     done
 
     if ! "$overall_success"; then
         echo "⚠️ One or more critical components' pods are not in a ready state. Manual inspection recommended."
-        # Do not exit here, allow the script to complete its checks, but notify the user.
-        # exit 1 # Uncomment this if you want to strictly fail on any non-ready pod.
     else
         echo "✅ All essential pods in namespace $namespace are reported as ready."
     fi
