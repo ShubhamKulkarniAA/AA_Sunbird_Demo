@@ -27,16 +27,19 @@ inputs = {
   node_role_name             = "sunbirdedAA-demo-EKSNodeRole"
   instance_type              = "c5.4xlarge"
   disk_size                  = 500 # Increase to 500GiB or more
-  desired_size               = 0
-  max_size                   = 0
-  min_size                   = 0
-
-  # --- MODIFIED: Enable AWS EBS CSI Driver ---
-  # Changed variable name to match the module's new variable (enable_ebs_csi_driver)
-  enable_ebs_csi_driver = true
-  # ----------------------------------------
+  desired_size               = 4
+  max_size                   = 5
+  min_size                   = 3
 
   bucket_name                = "sunbirdedaa-demo-bucket"
   storage_account_name       = "sunbirdedaa-demo-bucket"
   schemas_path               = "../modules/upload-files/schemas"
+  storage_container_public   = "public"
+  environment                = "demo"
+  s3_versioning_status       = "Enabled"
+
+  rsa_keys_count             = 2
+  aws_s3_public_bucket_name  = "sunbirdedaa-demo-public-bucket"
+  aws_s3_private_bucket_name = "sunbirdedaa-demo-private-bucket"
+  aws_s3_dial_state_bucket_name = "sunbirdedaa-demo-dialstate-bucket"
 }

@@ -46,9 +46,9 @@ global:
     node_role_name: "sunbirdedAA-demo-EKSNodeRole"
     instance_type: "c5.4xlarge"
     disk_size: 500 # Increase to 500GiB
-    desired_size: 0
-    max_size: 0
-    min_size: 0
+    desired_size: 4
+    max_size: 5
+    min_size: 3
   s3:
     bucket_name: "sunbirdedaa-demo-bucket"
     aws_s3_public_bucket_name: "sunbirdedaa-demo-public-bucket"
