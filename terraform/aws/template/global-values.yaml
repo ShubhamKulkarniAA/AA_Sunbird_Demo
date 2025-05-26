@@ -1,4 +1,8 @@
 global:
+  CERTIFICATE_PRIVATE_KEY: "---BEGIN RSA PRIVATE KEY---\n..." # Your actual private key here
+  CERTIFICATE_PUBLIC_KEY: "---BEGIN PUBLIC KEY---\n..." # Your actual public key here
+  CERTIFICATESIGN_PRIVATE_KEY: "---BEGIN RSA PRIVATE KEY---\n..." # Your actual private key here
+  CERTIFICATESIGN_PUBLIC_KEY: "---BEGIN PUBLIC KEY---\n..." # Your actual public key here
   building_block: "sunbirdedAA"
   env: "demo"
   environment: "demo"
@@ -29,7 +33,7 @@ global:
   proxy_certificate: |
     REPLACE_ME
   cloud_provider: "aws"
-  # Infra configuration
+  # Add your infra configs here:
   vpc:
     cidr_block: "10.0.0.0/16"
     public_subnet_cidr_1: "10.0.1.0/24"
