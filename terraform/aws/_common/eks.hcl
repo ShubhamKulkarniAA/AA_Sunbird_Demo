@@ -25,9 +25,9 @@ inputs = {
   node_role_name    = local.node_role_name
   instance_type     = "c5.4xlarge"
   disk_size         = 500 # Increase to 500GiB or more
-  desired_size      = 4
-  max_size          = 5
-  min_size          = 3
+  desired_size      = 0
+  max_size          = 0
+  min_size          = 0
 
   # --- ADDED: Enable AWS EBS CSI Driver ---
   enable_ebs_csi    = true
