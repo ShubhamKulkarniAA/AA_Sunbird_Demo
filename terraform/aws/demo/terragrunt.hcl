@@ -30,6 +30,8 @@ inputs = {
   desired_size               = 4
   max_size                   = 5
   min_size                   = 3
+# --- ADDED: Enable AWS EBS CSI Driver ---
+  enable_ebs_csi    = true
 
   bucket_name                = "sunbirdedaa-demo-bucket"
   storage_account_name       = "sunbirdedaa-demo-bucket"
