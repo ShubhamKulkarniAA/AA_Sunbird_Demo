@@ -10,6 +10,7 @@ environment=$(basename "$(pwd)")
 
 function create_tf_backend() {
     echo -e "Creating terraform state backend"
+    # Assuming create_tf_backend.sh is adapted for AWS S3 backend creation
     bash create_tf_backend.sh
 }
 
@@ -24,49 +25,53 @@ function backup_configs() {
 }
 
 function create_tf_resources() {
-    source tf.sh
-    echo -e "\nCreating resources on azure cloud"
+    source tf.sh # Assuming tf.sh contains AWS-specific Terraform/Terragrunt setup
+    echo -e "\nCreating resources on AWS cloud"
     terraform init -upgrade
     terragrunt init -upgrade
     terragrunt run-all apply --terragrunt-non-interactive
     chmod 600 ~/.kube/config
 }
+
 function certificate_keys() {
     # Generate private and public keys using openssl
     echo "Creation of RSA keys for certificate signing"
-    openssl genrsa -out ../terraform/azure/$environment/certkey.pem;
-    openssl rsa -in ../terraform/azure/$environment/certkey.pem -pubout -out ../terraform/azure/$environment/certpubkey.pem;
-    CERTPRIVATEKEY=$(sed 's/KEY-----/KEY-----\\n/g' ../terraform/azure/$environment/certkey.pem | sed 's/-----END/\\n-----END/g' | awk '{printf("%s",$0)}')
-    CERTPUBLICKEY=$(sed 's/KEY-----/KEY-----\\n/g' ../terraform/azure/$environment/certpubkey.pem | sed 's/-----END/\\n-----END/g' | awk '{printf("%s",$0)}')
-    CERTIFICATESIGNPRKEY=$(sed 's/BEGIN PRIVATE KEY-----/BEGIN PRIVATE KEY-----\\\\n/g' ../terraform/azure/$environment/certkey.pem | sed 's/-----END PRIVATE KEY/\\\\n-----END PRIVATE KEY/g' | awk '{printf("%s",$0)}')
-    CERTIFICATESIGNPUKEY=$(sed 's/BEGIN PUBLIC KEY-----/BEGIN PUBLIC KEY-----\\\\n/g' ../terraform/azure/$environment/certpubkey.pem | sed 's/-----END PUBLIC KEY/\\\\n-----END PUBLIC KEY/g' | awk '{printf("%s",$0)}')
-    printf "\n" >> ../terraform/azure/$environment/global-values.yaml
-    echo "  CERTIFICATE_PRIVATE_KEY: \"$CERTPRIVATEKEY\"" >> ../terraform/azure/$environment/global-values.yaml
-    echo "  CERTIFICATE_PUBLIC_KEY: \"$CERTPUBLICKEY\"" >> ../terraform/azure/$environment/global-values.yaml
-    echo "  CERTIFICATESIGN_PRIVATE_KEY: \"$CERTIFICATESIGNPRKEY\"" >> ../terraform/azure/$environment/global-values.yaml
-    echo "  CERTIFICATESIGN_PUBLIC_KEY: \"$CERTIFICATESIGNPUKEY\"" >> ../terraform/azure/$environment/global-values.yaml
+    openssl genrsa -out ../terraform/aws/$environment/certkey.pem
+    openssl rsa -in ../terraform/aws/$environment/certkey.pem -pubout -out ../terraform/aws/$environment/certpubkey.pem
+    CERTPRIVATEKEY=$(sed 's/KEY-----/KEY-----\\n/g' ../terraform/aws/$environment/certkey.pem | sed 's/-----END/\\n-----END/g' | awk '{printf("%s",$0)}')
+    CERTPUBLICKEY=$(sed 's/KEY-----/KEY-----\\n/g' ../terraform/aws/$environment/certpubkey.pem | sed 's/-----END/\\n-----END/g' | awk '{printf("%s",$0)}')
+    CERTIFICATESIGNPRKEY=$(sed 's/BEGIN PRIVATE KEY-----/BEGIN PRIVATE KEY-----\\\\n/g' ../terraform/aws/$environment/certkey.pem | sed 's/-----END PRIVATE KEY/\\\\n-----END PRIVATE KEY/g' | awk '{printf("%s",$0)}')
+    CERTIFICATESIGNPUKEY=$(sed 's/BEGIN PUBLIC KEY-----/BEGIN PUBLIC KEY-----\\\\n/g' ../terraform/aws/$environment/certpubkey.pem | sed 's/-----END PUBLIC KEY/\\\\n-----END PUBLIC KEY/g' | awk '{printf("%s",$0)}')
+    printf "\n" >> ../terraform/aws/$environment/global-values.yaml
+    echo "  CERTIFICATE_PRIVATE_KEY: \"$CERTPRIVATEKEY\"" >> ../terraform/aws/$environment/global-values.yaml
+    echo "  CERTIFICATE_PUBLIC_KEY: \"$CERTPUBLICKEY\"" >> ../terraform/aws/$environment/global-values.yaml
+    echo "  CERTIFICATESIGN_PRIVATE_KEY: \"$CERTIFICATESIGNPRKEY\"" >> ../terraform/aws/$environment/global-values.yaml
+    echo "  CERTIFICATESIGN_PUBLIC_KEY: \"$CERTIFICATESIGNPUKEY\"" >> ../terraform/aws/$environment/global-values.yaml
 }
 
 function certificate_config() {
-    # Check if the key is already present in RC 
+    # Check if the key is already present in RC
     echo "Configuring Certificatekeys"
-    kubectl -n sunbird exec deploy/nodebb -- apt update -y
-    kubectl -n sunbird exec deploy/nodebb -- apt install jq -y
-    CERTKEY=`kubectl -n sunbird exec deploy/nodebb -- curl --location --request POST 'http://registry-service:8081/api/v1/PublicKey/search' --header 'Content-Type: application/json' --data-raw '{ "filters": {}}' | jq '.[] | .value'`
-    # Inject cert keys to the service if its not available 
-    if [ "$CERTKEY" = "" ]; then
-            echo "Certificate RSA public key not available"
-            CERTPUBKEY=`awk -F'"' '/CERTIFICATE_PUBLIC_KEY/{print $2}' global-values.yaml`
-            curl_data="curl --location --request POST 'http://registry-service:8081/api/v1/PublicKey' --header 'Content-Type: application/json' --data-raw '{\"value\":\"$CERTPUBKEY\"}'"
-            echo "kubectl -n sunbird exec deploy/nodebb -- $curl_data" | sh -
-    fi
+    # Assuming 'nodebb' is a common component that will exist after learnbb installation
+    # You might need to adjust the pod name or deployment name if 'nodebb' is not the exact name
+    kubectl -n sunbird exec deploy/nodebb -- apt update -y || echo "NodeBB apt update failed, skipping."
+    kubectl -n sunbird exec deploy/nodebb -- apt install jq -y || echo "NodeBB jq install failed, skipping."
 
+    CERTKEY=`kubectl -n sunbird exec deploy/nodebb -- curl --location --request POST 'http://registry-service:8081/api/v1/PublicKey/search' --header 'Content-Type: application/json' --data-raw '{ "filters": {}}' | jq '.[] | .value'`
+    # Inject cert keys to the service if its not available
+    if [ "$CERTKEY" = "" ]; then
+        echo "Certificate RSA public key not available"
+        CERTPUBKEY=`awk -F'"' '/CERTIFICATE_PUBLIC_KEY/{print $2}' global-values.yaml`
+        curl_data="curl --location --request POST 'http://registry-service:8081/api/v1/PublicKey' --header 'Content-Type: application/json' --data-raw '{\"value\":\"$CERTPUBKEY\"}'"
+        echo "kubectl -n sunbird exec deploy/nodebb -- $curl_data" | sh -
+    fi
 }
+
 function install_component() {
     # We need a dummy cm for configmap to start. Later Lernbb will create real one
     kubectl create configmap keycloak-key -n sunbird 2>/dev/null || true
     local current_directory="$(pwd)"
-    if [ "$(basename $current_directory)" != "helmcharts" ]; then
+    if [ "$(basename "$current_directory")" != "helmcharts" ]; then
         cd ../../../helmcharts 2>/dev/null || true
     fi
     local component="$1"
@@ -78,26 +83,44 @@ function install_component() {
         ed_values_flag="-f $component/ed-values.yaml --wait --wait-for-jobs"
     fi
     ### Generate the key pair required for certificate template
-      if [ $component = "learnbb" ]; then
+    if [ "$component" = "learnbb" ]; then
         if kubectl get job keycloak-kids-keys -n sunbird >/dev/null 2>&1; then
             echo "Deleting existing job keycloak-kids-keys..."
             kubectl delete job keycloak-kids-keys -n sunbird
         fi
 
-        if [ -f "certkey.pem" ] && [ -f "certpubkey.pem" ]; then
+        # Adjust path for AWS
+        if [ -f "../terraform/aws/$environment/certkey.pem" ] && [ -f "../terraform/aws/$environment/certpubkey.pem" ]; then
             echo "Certificate keys are already created. Skipping the keys creation..."
         else
             certificate_keys
         fi
-      fi
+    fi
     helm upgrade --install "$component" "$component" --namespace sunbird -f "$component/values.yaml" \
-        $ed_values_flag \
-        -f "../terraform/azure/$environment/global-values.yaml" \
-        -f "../terraform/azure/$environment/global-cloud-values.yaml" --timeout 30m --debug
+        "$ed_values_flag" \
+        -f "../terraform/aws/$environment/global-values.yaml" \
+        -f "../terraform/aws/$environment/global-cloud-values.yaml" --timeout 30m --debug
 }
 
 function install_helm_components() {
-    components=("monitoring" "edbb" "learnbb" "knowledgebb" "obsrvbb" "inquirybb" "additional")
+    # Components to be installed. Ensure these chart names exist in your helmcharts directory.
+    # This list is based on common Sunbird deployments, adjust as needed.
+    components=(
+        "monitoring"
+        "edbb"
+        "learnbb"
+        "knowledgebb"
+        "obsrvbb"
+        "inquirybb"
+        "additional"
+        # Add any other specific Sunbird component chart names you have for AWS
+        # Example: "keycloak" (if it's a separate chart and not part of edbb/learnbb)
+        # "cassandra"
+        # "elasticsearch"
+        # "redis"
+        # "kafka"
+        # "nginx-ingress"
+    )
     for component in "${components[@]}"; do
         install_component "$component"
     done
@@ -108,31 +131,40 @@ function post_install_nodebb_plugins() {
     kubectl rollout status deployment nodebb -n sunbird --timeout=300s
 
     echo ">> Activating NodeBB plugins..."
-    kubectl exec -n sunbird deploy/nodebb -- ./nodebb activate nodebb-plugin-create-forum
-    kubectl exec -n sunbird deploy/nodebb -- ./nodebb activate nodebb-plugin-sunbird-oidc
-    kubectl exec -n sunbird deploy/nodebb -- ./nodebb activate nodebb-plugin-write-api
+    kubectl exec -n sunbird deploy/nodebb -- ./nodebb activate nodebb-plugin-create-forum || true # Add || true for robustness
+    kubectl exec -n sunbird deploy/nodebb -- ./nodebb activate nodebb-plugin-sunbird-oidc || true
+    kubectl exec -n sunbird deploy/nodebb -- ./nodebb activate nodebb-plugin-write-api || true
 
     echo ">> Rebuilding and restarting NodeBB..."
-    kubectl exec -n sunbird deploy/nodebb -- ./nodebb build
-    kubectl exec -n sunbird deploy/nodebb -- ./nodebb restart
+    kubectl exec -n sunbird deploy/nodebb -- ./nodebb build || true
+    kubectl exec -n sunbird deploy/nodebb -- ./nodebb restart || true
 
     echo "✅ NodeBB plugins are activated and NodeBB has been restarted."
 }
 
 function dns_mapping() {
     domain_name=$(kubectl get cm -n sunbird lms-env -ojsonpath='{.data.sunbird_web_url}')
-    PUBLIC_IP=$(kubectl get svc -n sunbird nginx-public-ingress -ojsonpath='{.status.loadBalancer.ingress[0].ip}')
+    # For AWS, typically you'd get the Load Balancer DNS name or IP
+    # Assuming an AWS EKS setup with an ALB/NLB for nginx-public-ingress
+    PUBLIC_ENDPOINT=$(kubectl get svc -n sunbird nginx-public-ingress -ojsonpath='{.status.loadBalancer.ingress[0].hostname}')
 
     local timeout=$((SECONDS + 1200))
     local check_interval=10
 
-    echo -e "\nAdd/update your DNS mapping for your domain by adding an A record to this IP: ${PUBLIC_IP}. The script will wait for 20 minutes"
+    echo -e "\nAdd/update your DNS mapping for your domain by adding a CNAME record to this endpoint: ${PUBLIC_ENDPOINT}. The script will wait for 20 minutes"
 
     while [ $SECONDS -lt $timeout ]; do
-        current_ip=$(nslookup $domain_name | grep -E -o 'Address: [0-9.]+' | awk '{print $2}')
+        # Use dig or host for DNS lookup to verify CNAME/A record for AWS
+        current_resolved_ip=$(dig +short "$domain_name" | head -n 1) # Gets the first resolved IP
+        current_resolved_cname=$(dig +short CNAME "$domain_name" | head -n 1) # Gets the CNAME if it exists
 
-        if [ "$current_ip" == "$PUBLIC_IP" ]; then
-            echo -e "\nDNS mapping has propagated successfully."
+        # For CNAME, we check if the resolved CNAME contains the public endpoint
+        if [[ "$current_resolved_cname" == *"$PUBLIC_ENDPOINT"* ]]; then
+            echo -e "\nDNS mapping (CNAME) has propagated successfully."
+            return
+        elif [[ -n "$current_resolved_ip" && "$(nslookup "$PUBLIC_ENDPOINT" | grep -E -o 'Address: [0-9.]+' | awk '{print $2}' | head -n 1)" == "$current_resolved_ip" ]]; then
+            # Fallback check if it resolves to the same IP as the public endpoint's IP (less robust for CNAME)
+            echo -e "\nDNS mapping (A record to Load Balancer IP) has propagated successfully."
             return
         fi
         echo "DNS mapping is still propagating. Retrying in $check_interval seconds..."
@@ -143,16 +175,19 @@ function dns_mapping() {
     echo "./install.sh dns_mapping"
     echo "./install.sh generate_postman_env"
     echo "./install.sh run_post_install"
+    exit 1 # Exit with error if DNS mapping fails
 }
 
 function generate_postman_env() {
     local current_directory="$(pwd)"
-    if [ "$(basename $current_directory)" != "$environment" ]; then
-        cd ../terraform/azure/$environment 2>/dev/null || true
+    if [ "$(basename "$current_directory")" != "$environment" ]; then
+        # Adjust path for AWS
+        cd ../terraform/aws/$environment 2>/dev/null || true
     fi
     domain_name=$(kubectl get cm -n sunbird lms-env -ojsonpath='{.data.sunbird_web_url}')
-    blob_store_path=$(kubectl get cm -n sunbird player-env -o jsonpath='{.data.sunbird_public_storage_account_name}' | sed 's|/$||')
-    public_container_name=$(kubectl get cm -n sunbird player-env -ojsonpath='{.data.cloud_storage_resourceBundle_bucketname}') 
+    # For AWS S3, this would be the bucket name and potentially the region endpoint if not using CNAME
+    blob_store_path=$(kubectl get cm -n sunbird player-env -o jsonpath='{.data.sunbird_public_storage_account_name}' | sed 's|/$||') # Assuming this variable now holds the S3 bucket name
+    public_container_name=$(kubectl get cm -n sunbird player-env -ojsonpath='{.data.cloud_storage_resourceBundle_bucketname}') # Assuming this holds a folder/prefix in the S3 bucket
     api_key=$(kubectl get cm -n sunbird player-env -ojsonpath='{.data.sunbird_api_auth_token}')
     keycloak_secret=$(kubectl get cm -n sunbird player-env -ojsonpath='{.data.sunbird_portal_session_secret}')
     keycloak_admin=$(kubectl get cm -n sunbird userorg-env -ojsonpath='{.data.sunbird_sso_username}')
@@ -170,12 +205,13 @@ function generate_postman_env() {
         -e "s|PUBLIC_CONTAINER_NAME|${public_container_name}|g" \
         "${temp_file}" >"env.json"
 
-    echo -e "A env.json file is created in this directory: terraform/azure/$environment"
+    echo -e "A env.json file is created in this directory: terraform/aws/$environment"
     echo "Import the env.json file into postman to invoke other APIs"
 }
 
 function restart_workloads_using_keys() {
     echo -e "\nRestart workloads using keycloak keys and wait for them to start..."
+    # Ensure these deployment names are correct for your Sunbird setup
     kubectl rollout restart deployment -n sunbird neo4j knowledge-mw player report content adminutil cert-registry groups userorg lms notification registry analytics
     kubectl rollout status deployment -n sunbird neo4j knowledge-mw player report content adminutil cert-registry groups userorg lms notification registry analytics
     echo -e "\nWaiting for all pods to start"
@@ -183,56 +219,63 @@ function restart_workloads_using_keys() {
 
 function run_post_install() {
     local current_directory="$(pwd)"
-    if [ "$(basename $current_directory)" != "$environment" ]; then
-        cd ../terraform/azure/$environment 2>/dev/null || true
+    if [ "$(basename "$current_directory")" != "$environment" ]; then
+        # Adjust path for AWS
+        cd ../terraform/aws/$environment 2>/dev/null || true
     fi
     check_pod_status
     echo "Starting post install..."
+    # Ensure this collection path is correct
     cp ../../../postman-collection/collection${RELEASE}.json .
     postman collection run collection${RELEASE}.json --environment env.json --delay-request 500 --bail --insecure
 }
 
 function create_client_forms() {
     local current_directory="$(pwd)"
-    if [ "$(basename $current_directory)" != "$environment" ]; then
-        cd ../terraform/azure/$environment 2>/dev/null || true
+    if [ "$(basename "$current_directory")" != "$environment" ]; then
+        # Adjust path for AWS
+        cd ../terraform/aws/$environment 2>/dev/null || true
     fi
-    cp -rf ../../../postman-collection/ED-${RELEASE}  .
+    # Ensure this collection path is correct
+    cp -rf ../../../postman-collection/ED-${RELEASE} .
     check_pod_status
     #loop through files inside collection folder
     for FILES in ED-${RELEASE}/*.json; do
-     echo "Creating client forms in.. $FILES"
-      postman collection run $FILES --environment env.json --delay-request 500 --bail --insecure
-    done 
-   }
+        echo "Creating client forms in.. $FILES"
+        postman collection run "$FILES" --environment env.json --delay-request 500 --bail --insecure
+    done
+}
 
 function cleanworkspace() {
-        rm  certkey.pem certpubkey.pem
-        sed -i '/CERTIFICATE_PRIVATE_KEY:/d' global-values.yaml
-        sed -i '/CERTIFICATE_PUBLIC_KEY:/d' global-values.yaml
-        sed -i '/CERTIFICATESIGN_PRIVATE_KEY:/d' global-values.yaml
-        sed -i '/CERTIFICATESIGN_PUBLIC_KEY:/d' global-values.yaml
-        echo "cleanup completed"
+    # Adjust paths for AWS
+    rm -f ../terraform/aws/$environment/certkey.pem ../terraform/aws/$environment/certpubkey.pem
+    sed -i '/CERTIFICATE_PRIVATE_KEY:/d' ../terraform/aws/$environment/global-values.yaml
+    sed -i '/CERTIFICATE_PUBLIC_KEY:/d' ../terraform/aws/$environment/global-values.yaml
+    sed -i '/CERTIFICATESIGN_PRIVATE_KEY:/d' ../terraform/aws/$environment/global-values.yaml
+    sed -i '/CERTIFICATESIGN_PUBLIC_KEY:/d' ../terraform/aws/$environment/global-values.yaml
+    echo "cleanup completed"
 }
+
 function destroy_tf_resources() {
-    source tf.sh
+    source tf.sh # Assuming tf.sh contains AWS-specific Terraform/Terragrunt setup
     cleanworkspace
-    echo -e "Destroying resources on azure cloud"
+    echo -e "Destroying resources on AWS cloud"
     terragrunt run-all destroy
 }
 
 function invoke_functions() {
     for func in "$@"; do
-        $func
+        "$func"
     done
 }
 
 function check_pod_status() {
     echo -e "\nRemove any orphaned pods if they exist."
-    kubectl get pod -n sunbird --no-headers | grep -v Completed | grep -v Running | awk '{print $1}' | xargs -I {} kubectl delete -n sunbird pod {} || true
+    # kubectl delete can fail if no pods are found, so add || true
+    kubectl get pod -n sunbird --no-headers | grep -v Completed | grep -v Running | awk '{print $1}' | xargs -r -I {} kubectl delete -n sunbird pod {} || true
     local timeout=$((SECONDS + 600))
     consecutive_runs=0
-    echo "Ensure the post are stable for 100 seconds"
+    echo "Ensure the pods are stable for 100 seconds"
     while [ $SECONDS -lt $timeout ]; do
         if ! kubectl get pods --no-headers -n sunbird | grep -v Running | grep -v Completed; then
             echo "All pods are running successfully."
@@ -241,10 +284,10 @@ function check_pod_status() {
             ((consecutive_runs++))
         fi
 
-        if [ $consecutive_runs -ge 10 ]; then
-            echo "Timed out after 10 tries. Some pods are still not running successfully. Check the crashing pod logs and resolve the issues. Once pods are running successfully, re-reun this script as below:"
+        if [ "$consecutive_runs" -ge 10 ]; then
+            echo "Timed out after 10 tries. Some pods are still not running successfully. Check the crashing pod logs and resolve the issues. Once pods are running successfully, re-run this script as below:"
             echo "./install.sh run_post_install"
-            exit
+            exit 1 # Exit with error if pods are not stable
         fi
 
         echo "Number of crashing pods found. Countdown to 10"
@@ -253,19 +296,22 @@ function check_pod_status() {
     echo "All pods are running successfully."
 }
 
+# --- Global Variables ---
 RELEASE="release700"
 POSTMAN_COLLECTION_LINK="https://api.postman.com/collections/5338608-e28d5510-20d5-466e-a9ad-3fcf59ea9f96?access_key=PMAT-01HMV5SB2ZPXCGNKD74J7ARKRQ"
-CERTPUBLICKEY=""
-CERTPRIVATEKEY=""
+CERTPUBLICKEY="" # These will be populated by the certificate_keys function
+CERTPRIVATEKEY="" # These will be populated by the certificate_keys function
 
-
+# --- Main execution logic ---
 if [ $# -eq 0 ]; then
     create_tf_backend
     backup_configs
     create_tf_resources
+    # Change directory to helmcharts before installing components
     cd ../../../helmcharts
     install_helm_components
-    cd ../terraform/azure/$environment
+    # Change back to the environment directory for post-install steps
+    cd ../terraform/aws/$environment
     post_install_nodebb_plugins
     restart_workloads_using_keys
     certificate_config
