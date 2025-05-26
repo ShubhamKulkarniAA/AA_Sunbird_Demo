@@ -27,9 +27,9 @@ inputs = {
   node_role_name             = "sunbirdedAA-demo-EKSNodeRole"
   instance_type              = "c5.4xlarge"
   disk_size                  = 100 # Increase to 100GiB or more
-  desired_size               = 1
-  max_size                   = 2
-  min_size                   = 1
+  desired_size               = 5
+  max_size                   = 4
+  min_size                   = 3
 
   bucket_name                = "sunbirdedaa-demo-bucket"
   storage_account_name       = "sunbirdedaa-demo-bucket"
