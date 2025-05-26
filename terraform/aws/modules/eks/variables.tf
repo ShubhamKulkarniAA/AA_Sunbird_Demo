@@ -37,3 +37,9 @@ variable "min_size" {
   type        = number
   description = "Minimum number of worker nodes"
 }
+
+variable "enable_ebs_csi_driver" {
+  description = "Whether to enable the AWS EBS CSI driver EKS add-on."
+  type        = bool
+  default     = false # Set to false by default, you'll set it to true in terragrunt
+}

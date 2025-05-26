@@ -20,6 +20,7 @@ inputs = {
   public_subnet_cidr_1       = "10.10.1.0/24"
   public_subnet_cidr_2       = "10.10.2.0/24"
   availability_zone_1        = "ap-south-1a"
+  # Please verify this: should be an AZ name like "ap-south-1b", not a CIDR
   availability_zone_2        = "ap-south-1b"
 
   eks_cluster_name           = "demo-sunbirdedAA-eks"
@@ -30,18 +31,13 @@ inputs = {
   desired_size               = 4
   max_size                   = 5
   min_size                   = 3
-# --- ADDED: Enable AWS EBS CSI Driver ---
-  enable_ebs_csi    = true
+
+  # --- MODIFIED: Enable AWS EBS CSI Driver ---
+  # Changed variable name to match the module's new variable (enable_ebs_csi_driver)
+  enable_ebs_csi_driver = true
+  # ----------------------------------------
 
   bucket_name                = "sunbirdedaa-demo-bucket"
   storage_account_name       = "sunbirdedaa-demo-bucket"
   schemas_path               = "../modules/upload-files/schemas"
-  storage_container_public   = "public"
-  environment                = "demo"
-  s3_versioning_status       = "Enabled"
-
-  rsa_keys_count             = 2
-  aws_s3_public_bucket_name  = "sunbirdedaa-demo-public-bucket"
-  aws_s3_private_bucket_name = "sunbirdedaa-demo-private-bucket"
-  aws_s3_dial_state_bucket_name = "sunbirdedaa-demo-dialstate-bucket"
 }
