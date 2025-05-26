@@ -29,7 +29,7 @@ global:
   proxy_certificate: |
     REPLACE_ME
   cloud_provider: "aws"
-  # Add your infra configs here:
+  # Infra configuration
   vpc:
     cidr_block: "10.0.0.0/16"
     public_subnet_cidr_1: "10.0.1.0/24"
