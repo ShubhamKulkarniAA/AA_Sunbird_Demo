@@ -24,7 +24,7 @@ if [[ -z "${AWS_SECRET_ACCESS_KEY:-}" ]]; then
   echo # Newline after silent input
 fi
 if [[ -z "${AWS_REGION:-}" ]]; then
-  read -rp "Enter your AWS_REGION (e.g., ap-south-1): " AWS_REGION
+  read -rp "Enter your AWS_REGION (e.g., us-east-1): " AWS_REGION
 fi
 
 # Export terraform variables from the AWS environment variables
@@ -160,52 +160,54 @@ setup_kubernetes_prerequisites() {
 certificate_keys() {
     echo -e "\n--- Generating RSA Keys for Certificate Signing ---"
 
-    # This path is relative to BASE_DIR/terraform/aws
-    # So if BASE_DIR is /home/ubuntu/AA_Sunbird_Demo, and environment is 'template'
-    # this will correctly point to /home/ubuntu/AA_Sunbird_Demo/terraform/aws/template
     local cert_dir="${BASE_DIR}/terraform/aws/$environment"
     mkdir -p "$cert_dir" || { echo "❌ Failed to create directory: $cert_dir"; exit 1; }
 
-    if [[ -f "$cert_dir/certkey.pem" && -f "$cert_dir/certpubkey.pem" ]]; then
-        echo "⚠️ Certificate keys already exist in $cert_dir; skipping generation."
-    else
+    # Generate cert files if they don't exist
+    if [[ ! -f "$cert_dir/certkey.pem" && ! -f "$cert_dir/certpubkey.pem" ]]; then
         openssl genrsa -out "$cert_dir/certkey.pem" 2048 || { echo "❌ Failed to generate RSA private key."; exit 1; }
         openssl rsa -in "$cert_dir/certkey.pem" -pubout -out "$cert_dir/certpubkey.pem" || { echo "❌ Failed to generate RSA public key."; exit 1; }
         echo "✅ RSA keys generated in "$cert_dir"."
+    else
+        echo "⚠️ Certificate keys already exist in $cert_dir; skipping generation."
     fi
 
     # Escape newlines for YAML
-    CERTPRIVATEKEY=$(cat "$cert_dir/certkey.pem" | tr '\n' '\\n' | sed 's/\\n$//') # Remove trailing newline escape
-    CERTPUBLICKEY=$(cat "$cert_dir/certpubkey.pem" | tr '\n' '\\n' | sed 's/\\n$//') # Remove trailing newline escape
-
-    # Fix: Changed the double-escape logic to standard single-escape for YAML within quotes
+    CERTPRIVATEKEY=$(cat "$cert_dir/certkey.pem" | tr '\n' '\\n' | sed 's/\\n$//')
+    CERTPUBLICKEY=$(cat "$cert_dir/certpubkey.pem" | tr '\n' '\\n' | sed 's/\\n$//')
     CERTIFICATESIGNPRKEY=$(cat "$cert_dir/certkey.pem" | tr '\n' '\\n' | sed 's/\\n$//')
     CERTIFICATESIGNPUKEY=$(cat "$cert_dir/certpubkey.pem" | tr '\n' '\\n' | sed 's/\\n$//')
 
     local global_values_path="${cert_dir}/global-values.yaml"
 
-    # Check if the file exists, if not, create it with apiVersion
+    # If global-values.yaml does NOT exist, create a minimal valid one starting with 'global:'
     if [[ ! -f "$global_values_path" ]]; then
-        echo "apiVersion: v2" > "$global_values_path"
-        echo "Creating new global-values.yaml at $global_values_path."
+        echo "global:" > "$global_values_path"
+        echo "Creating new global-values.yaml at $global_values_path with 'global:' header."
     fi
 
-    # Use a temporary file and atomically replace to avoid corruption and ensure proper appending
-    local temp_global_values="${global_values_path}.tmp"
-    if ! grep -q "CERTIFICATE_PRIVATE_KEY:" "$global_values_path"; then
-        # Append only if not already present
-        cp "$global_values_path" "$temp_global_values"
-        {
-            echo "  CERTIFICATE_PRIVATE_KEY: \"$CERTPRIVATEKEY\""
-            echo "  CERTIFICATE_PUBLIC_KEY: \"$CERTPUBLICKEY\""
-            echo "  CERTIFICATESIGN_PRIVATE_KEY: \"$CERTIFICATESIGNPRKEY\""
-            echo "  CERTIFICATESIGN_PUBLIC_KEY: \"$CERTIFICATESIGNPUKEY\""
-        } >> "$temp_global_values"
-        mv "$temp_global_values" "$global_values_path"
-        echo "✅ Certificate keys appended to $global_values_path."
-    else
-        echo "⚠️ Certificate keys already found in $global_values_path; skipping append."
-    fi
+    # Now, inject/update the keys using sed.
+    # This will insert the keys after the first 'global:' line if they don't exist,
+    # or update them if they do. This is a more robust approach for YAML manipulation.
+    # The 'a\' command appends after the matched line.
+    # The 'c\' command changes (replaces) the matched line.
+    # Using a temporary file for safety with sed -i.
+    sed -i.bak \
+        -e "/^global:/a\\
+  CERTIFICATE_PRIVATE_KEY: \"$CERTPRIVATEKEY\"\\
+  CERTIFICATE_PUBLIC_KEY: \"$CERTPUBLICKEY\"\\
+  CERTIFICATESIGN_PRIVATE_KEY: \"$CERTIFICATESIGNPRKEY\"\\
+  CERTIFICATESIGN_PUBLIC_KEY: \"$CERTIFICATESIGNPUKEY\"" \
+        -e "/CERTIFICATE_PRIVATE_KEY:/c\\  CERTIFICATE_PRIVATE_KEY: \"$CERTPRIVATEKEY\"" \
+        -e "/CERTIFICATE_PUBLIC_KEY:/c\\  CERTIFICATE_PUBLIC_KEY: \"$CERTPUBLICKEY\"" \
+        -e "/CERTIFICATESIGN_PRIVATE_KEY:/c\\  CERTIFICATESIGN_PRIVATE_KEY: \"$CERTIFICATESIGNPRKEY\"" \
+        -e "/CERTIFICATESIGN_PUBLIC_KEY:/c\\  CERTIFICATESIGN_PUBLIC_KEY: \"$CERTIFICATESIGNPUKEY\"" \
+        "$global_values_path"
+
+    # Remove the backup file created by sed
+    rm -f "${global_values_path}.bak"
+
+    echo "✅ Certificate keys injected/updated in $global_values_path."
 }
 
 certificate_config() {
