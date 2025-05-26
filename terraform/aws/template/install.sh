@@ -24,7 +24,7 @@ if [[ -z "${AWS_SECRET_ACCESS_KEY:-}" ]]; then
   echo # Newline after silent input
 fi
 if [[ -z "${AWS_REGION:-}" ]]; then
-  read -rp "Enter your AWS_REGION (e.g., us-east-1): " AWS_REGION
+  read -rp "Enter your AWS_REGION (e.g., ap-south-1): " AWS_REGION
 fi
 
 # Export terraform variables from the AWS environment variables
@@ -171,7 +171,7 @@ certificate_keys() {
     else
         openssl genrsa -out "$cert_dir/certkey.pem" 2048 || { echo "❌ Failed to generate RSA private key."; exit 1; }
         openssl rsa -in "$cert_dir/certkey.pem" -pubout -out "$cert_dir/certpubkey.pem" || { echo "❌ Failed to generate RSA public key."; exit 1; }
-        echo "✅ RSA keys generated in $cert_dir."
+        echo "✅ RSA keys generated in "$cert_dir"."
     fi
 
     # Escape newlines for YAML
@@ -312,9 +312,7 @@ install_component() {
             # Using --wait=false to not block if job is stuck deleting, relies on subsequent Helm install to recreate
             kubectl delete job keycloak-kids-keys -n sunbird --timeout=60s --wait=false || echo "⚠️ Failed to delete keycloak-kids-keys job, might already be gone or stuck."
         fi
-        # Ensure certificate keys are generated/present before learnbb is installed
-        # This call is idempotent, so it's safe to run again.
-        certificate_keys
+        # Removed redundant call to certificate_keys here as it's now called in main
     fi
 
     echo "Running helm upgrade --install for $component..."
@@ -544,6 +542,10 @@ main() {
         exit 1
     fi
     echo "✅ All required tools are present."
+
+    # --- NEW CALL START ---
+    certificate_keys # Create/update global-values.yaml and certs early, before Terraform backend needs it
+    # --- NEW CALL END ---
 
     create_tf_backend
     backup_configs
