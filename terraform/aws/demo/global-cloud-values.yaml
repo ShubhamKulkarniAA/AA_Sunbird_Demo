@@ -1,0 +1,36 @@
+global:
+  env: demo
+  environment: demo
+  building_block: sunbirdedAA
+  cloud_storage_access_key: AKIAU6GDWHCF4NHCY3PI
+  cloud_storage_secret_key: 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
+  public_container_name: sunbirdedaa-demo-public-bucket
+  private_container_name: sunbirdedaa-demo-private-bucket
+  dial_state_container_public: sunbirdedaa-demo-dialstate-bucket
+  private_ingressgateway_ip: 
+  encryption__string: BRubheab2RTSusy0MzrzXCGoPigVUzPA
+  random_string: uT6nheOyZUleFUpn
+  object_storage_endpoint: s3.ap-south-1.amazonaws.com
+
+velero:
+  enabled: true
+  credentials:
+    useSecret: true
+    secretContents:
+      cloud: |
+        AWS_ACCESS_KEY_ID: AKIAU6GDWHCF4NHCY3PI
+        AWS_SECRET_ACCESS_KEY: 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
+  configuration:
+    backupStorageLocation:
+      - name: default
+        provider: "aws"
+        bucket: sunbirdedaa-demo-public-bucket
+        config:
+          region: ap-south-1
+          s3ForcePathStyle: "true"
+          prefix: "backups"
+
+nginx-public-ingress:
+  commonAnnotations:
+    reloader.stakater.com/auto: "true"
+    service.beta.kubernetes.io/aws-load-balancer-type: "true"
