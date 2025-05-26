@@ -1,0 +1,53 @@
+global:
+  building_block: "sunbirdedAA"
+  env: "demo"
+  environment: "demo"
+  release_version: release-7.0.0
+  domain: "sunbird.alignedautomation.com"
+  aws_account: "339712817291"
+  cloud_storage_region: "ap-south-1"
+  sunbird_cloud_storage_provider: "aws"
+  checkpoint_store_type: "aws"
+  cloud_service_provider: "aws"
+  cloud_storage_provider: "aws"
+  sunbird_google_captcha_site_key:
+  google_captcha_private_key:
+  sunbird_google_oauth_clientId:
+  sunbird_google_oauth_clientSecret:
+  mail_server_from_email: ""
+  mail_server_password: ""
+  mail_server_host: smtp.sendgrid.net
+  mail_server_port: "587"
+  mail_server_username: apikey
+  sunbird_msg_91_auth: ""
+  sunbird_msg_sender: ""
+  youtube_apikey: ""
+  merge_domain_status: "false"
+  merge_domain: ""
+  proxy_private_key: |
+    REPLACE_ME
+  proxy_certificate: |
+    REPLACE_ME
+  cloud_provider: "aws"
+  # Infra configuration
+  vpc:
+    cidr_block: "10.0.0.0/16"
+    public_subnet_cidr_1: "10.0.1.0/24"
+    public_subnet_cidr_2: "10.0.2.0/24"
+    availability_zone_1: "ap-south-1a"
+    availability_zone_2: "ap-south-1b"
+
+  eks:
+    cluster_name: "demo-sunbirdedAA-eks"
+    cluster_role_name: "sunbirdedAA-demo-EKSClusterRole"
+    node_role_name: "sunbirdedAA-demo-EKSNodeRole"
+    instance_type: "c5.4xlarge"
+    desired_size: 1
+    max_size: 2
+    min_size: 1
+
+  s3:
+    bucket_name: "sunbirdedaa-demo-bucket"
+    aws_s3_public_bucket_name: "sunbirdedaa-demo-public-bucket"
+    aws_s3_private_bucket_name: "sunbirdedaa-demo-private-bucket"
+    versioning_status: "Enabled"
