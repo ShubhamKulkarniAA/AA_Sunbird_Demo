@@ -1,0 +1,6 @@
+export AWS_REGION=ap-south-1
+export AWS_TERRAFORM_BACKEND_BUCKET=demotfstatesunbird
+export AWS_TERRAFORM_BACKEND_KEY=demo/terraform.tfstate
+export AWS_TERRAFORM_BACKEND_DYNAMODB_TABLE=demo-terraform-lock
+export AWS_PROFILE=default
+export AWS_ACCOUNT_ID=339712817291

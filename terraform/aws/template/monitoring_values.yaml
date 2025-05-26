@@ -1,0 +1,127 @@
+USER-SUPPLIED VALUES:
+fullname: monitoring
+global:
+  aws_account: "339712817291"
+  building_block: sunbirdedAA
+  checkpoint_store_type: aws
+  cloud_provider: aws
+  cloud_service_provider: aws
+  cloud_storage_access_key: AKIAU6GDWHCFVYYSE7KB
+  cloud_storage_provider: aws
+  cloud_storage_region: ap-south-1
+  cloud_storage_secret_key: QJAFy3dkOvPQdJNcBFCR14qCXAKjUKDqpqKJ0j5b
+  dial_state_container_public: sunbirdedaa-demo-dialstate-bucket
+  domain: sunbird.alignedautomation.com
+  eks:
+    cluster_name: demo-sunbirdedAA-eks
+    cluster_role_name: sunbirdedAA-demo-EKSClusterRole
+    desired_size: 2
+    instance_type: c5.4xlarge
+    max_size: 2
+    min_size: 1
+    node_role_name: sunbirdedAA-demo-EKSNodeRole
+  encryption__string: BRubheab2RTSusy0MzrzXCGoPigVUzPA
+  env: demo
+  environment: demo
+  google_captcha_private_key: null
+  mail_server_from_email: ""
+  mail_server_host: smtp.sendgrid.net
+  mail_server_password: ""
+  mail_server_port: "587"
+  mail_server_username: apikey
+  merge_domain: ""
+  merge_domain_status: "false"
+  object_storage_endpoint: s3.ap-south-1.amazonaws.com
+  private_container_name: sunbirdedaa-demo-private-bucket
+  private_ingressgateway_ip: null
+  proxy_certificate: |
+    REPLACE_ME
+  proxy_private_key: |
+    REPLACE_ME
+  public_container_name: sunbirdedaa-demo-public-bucket
+  random_string: uT6nheOyZUleFUpn
+  release_version: release-7.0.0
+  s3:
+    aws_s3_private_bucket_name: sunbirdedaa-demo-private-bucket
+    aws_s3_public_bucket_name: sunbirdedaa-demo-public-bucket
+    bucket_name: sunbirdedaa-demo-bucket
+    versioning_status: Enabled
+  sunbird_cloud_storage_provider: aws
+  sunbird_google_captcha_site_key: null
+  sunbird_google_oauth_clientId: null
+  sunbird_google_oauth_clientSecret: null
+  sunbird_msg_91_auth: ""
+  sunbird_msg_sender: ""
+  vpc:
+    availability_zone_1: ap-south-1a
+    availability_zone_2: ap-south-1b
+    cidr_block: 10.0.0.0/16
+    public_subnet_cidr_1: 10.0.1.0/24
+    public_subnet_cidr_2: 10.0.2.0/24
+  youtube_apikey: ""
+kube-prometheus-stack:
+  grafana:
+    env:
+      GF_SERVER_ROOT_URL: http://example.com/grafana/
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+  prometheus:
+    prometheusSpec:
+      retention: 30d
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            accessModes:
+            - ReadWriteOnce
+            resources:
+              requests:
+                storage: 25Gi
+loki:
+  loki:
+    auth_enabled: false
+    commonConfig:
+      replication_factor: 1
+    compactor:
+      compaction_interval: 10m
+      retention_delete_delay: 1h
+      retention_delete_worker_count: 150
+      retention_enabled: true
+      shared_store: filesystem
+      working_directory: /var/loki/boltdb-shipper-compactor
+    limits_config:
+      retention_period: 2d
+    storage:
+      type: filesystem
+    storage_config:
+      boltdb_shipper:
+        active_index_directory: /var/loki/boltdb-shipper-active
+        cache_location: /var/loki/boltdb-shipper-cache
+        cache_ttl: 24h
+        shared_store: filesystem
+      filesystem:
+        directory: /var/loki/chunks
+  singleBinary:
+    persistence:
+      size: 25Gi
+    replicas: 1
+nginx-public-ingress:
+  commonAnnotations:
+    reloader.stakater.com/auto: "true"
+    service.beta.kubernetes.io/aws-load-balancer-type: "true"
+replicaCount: 1
+velero:
+  configuration:
+    backupStorageLocation:
+    - bucket: sunbirdedaa-demo-public-bucket
+      config:
+        prefix: backups
+        region: ap-south-1
+        s3ForcePathStyle: "true"
+      name: default
+      provider: aws
+  credentials:
+    secretContents:
+      cloud: |
+        AWS_ACCESS_KEY_ID: AKIAU6GDWHCFVYYSE7KB
+        AWS_SECRET_ACCESS_KEY: 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
+    useSecret: true
+  enabled: true
