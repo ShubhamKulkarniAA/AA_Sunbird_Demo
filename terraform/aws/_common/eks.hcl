@@ -24,8 +24,8 @@ inputs = {
   cluster_role_name = local.cluster_role_name
   node_role_name    = local.node_role_name
   instance_type     = "c5.4xlarge"
-  disk_size         = 100 # Increase to 100GiB or more
-  desired_size      = 1
-  max_size          = 2
-  min_size          = 1
+  disk_size         = 500 # Increase to 500GiB or more
+  desired_size      = 5
+  max_size          = 4
+  min_size          = 3
 }
