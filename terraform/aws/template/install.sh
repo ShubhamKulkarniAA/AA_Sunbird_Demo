@@ -160,54 +160,52 @@ setup_kubernetes_prerequisites() {
 certificate_keys() {
     echo -e "\n--- Generating RSA Keys for Certificate Signing ---"
 
+    # This path is relative to BASE_DIR/terraform/aws
+    # So if BASE_DIR is /home/ubuntu/AA_Sunbird_Demo, and environment is 'template'
+    # this will correctly point to /home/ubuntu/AA_Sunbird_Demo/terraform/aws/template
     local cert_dir="${BASE_DIR}/terraform/aws/$environment"
     mkdir -p "$cert_dir" || { echo "❌ Failed to create directory: $cert_dir"; exit 1; }
 
-    # Generate cert files if they don't exist
-    if [[ ! -f "$cert_dir/certkey.pem" && ! -f "$cert_dir/certpubkey.pem" ]]; then
+    if [[ -f "$cert_dir/certkey.pem" && -f "$cert_dir/certpubkey.pem" ]]; then
+        echo "⚠️ Certificate keys already exist in $cert_dir; skipping generation."
+    else
         openssl genrsa -out "$cert_dir/certkey.pem" 2048 || { echo "❌ Failed to generate RSA private key."; exit 1; }
         openssl rsa -in "$cert_dir/certkey.pem" -pubout -out "$cert_dir/certpubkey.pem" || { echo "❌ Failed to generate RSA public key."; exit 1; }
-        echo "✅ RSA keys generated in "$cert_dir"."
-    else
-        echo "⚠️ Certificate keys already exist in $cert_dir; skipping generation."
+        echo "✅ RSA keys generated in $cert_dir."
     fi
 
     # Escape newlines for YAML
-    CERTPRIVATEKEY=$(cat "$cert_dir/certkey.pem" | tr '\n' '\\n' | sed 's/\\n$//')
-    CERTPUBLICKEY=$(cat "$cert_dir/certpubkey.pem" | tr '\n' '\\n' | sed 's/\\n$//')
-    CERTIFICATESIGNPRKEY=$(cat "$cert_dir/certkey.pem" | tr '\n' '\\n' | sed 's/\\n$//')
-    CERTIFICATESIGNPUKEY=$(cat "$cert_dir/certpubkey.pem" | tr '\n' '\\n' | sed 's/\\n$//')
+    CERTPRIVATEKEY=$(cat "$cert_dir/certkey.pem" | tr '\n' '\\n' | sed 's/\\n$//') # Remove trailing newline escape
+    CERTPUBLICKEY=$(cat "$cert_dir/certpubkey.pem" | tr '\n' '\\n' | sed 's/\\n$//') # Remove trailing newline escape
+
+    # Alternative with double escape for certain usages (ensure this is needed)
+    CERTIFICATESIGNPRKEY=$(cat "$cert_dir/certkey.pem" | tr '\n' '\f' | sed 's/\f/\\\\n/g' | tr '\f' '\n' | sed 's/\\\\n$//')
+    CERTIFICATESIGNPUKEY=$(cat "$cert_dir/certpubkey.pem" | tr '\n' '\f' | sed 's/\f/\\\\n/g' | tr '\f' '\n' | sed 's/\\\\n$//')
 
     local global_values_path="${cert_dir}/global-values.yaml"
 
-    # If global-values.yaml does NOT exist, create a minimal valid one starting with 'global:'
+    # Check if the file exists, if not, create it with apiVersion
     if [[ ! -f "$global_values_path" ]]; then
-        echo "global:" > "$global_values_path"
-        echo "Creating new global-values.yaml at $global_values_path with 'global:' header."
+        echo "apiVersion: v2" > "$global_values_path"
+        echo "Creating new global-values.yaml at $global_values_path."
     fi
 
-    # Now, inject/update the keys using sed.
-    # This will insert the keys after the first 'global:' line if they don't exist,
-    # or update them if they do. This is a more robust approach for YAML manipulation.
-    # The 'a\' command appends after the matched line.
-    # The 'c\' command changes (replaces) the matched line.
-    # Using a temporary file for safety with sed -i.
-    sed -i.bak \
-        -e "/^global:/a\\
-  CERTIFICATE_PRIVATE_KEY: \"$CERTPRIVATEKEY\"\\
-  CERTIFICATE_PUBLIC_KEY: \"$CERTPUBLICKEY\"\\
-  CERTIFICATESIGN_PRIVATE_KEY: \"$CERTIFICATESIGNPRKEY\"\\
-  CERTIFICATESIGN_PUBLIC_KEY: \"$CERTIFICATESIGNPUKEY\"" \
-        -e "/CERTIFICATE_PRIVATE_KEY:/c\\  CERTIFICATE_PRIVATE_KEY: \"$CERTPRIVATEKEY\"" \
-        -e "/CERTIFICATE_PUBLIC_KEY:/c\\  CERTIFICATE_PUBLIC_KEY: \"$CERTPUBLICKEY\"" \
-        -e "/CERTIFICATESIGN_PRIVATE_KEY:/c\\  CERTIFICATESIGN_PRIVATE_KEY: \"$CERTIFICATESIGNPRKEY\"" \
-        -e "/CERTIFICATESIGN_PUBLIC_KEY:/c\\  CERTIFICATESIGN_PUBLIC_KEY: \"$CERTIFICATESIGNPUKEY\"" \
-        "$global_values_path"
-
-    # Remove the backup file created by sed
-    rm -f "${global_values_path}.bak"
-
-    echo "✅ Certificate keys injected/updated in $global_values_path."
+    # Use a temporary file and atomically replace to avoid corruption and ensure proper appending
+    local temp_global_values="${global_values_path}.tmp"
+    if ! grep -q "CERTIFICATE_PRIVATE_KEY:" "$global_values_path"; then
+        # Append only if not already present
+        cp "$global_values_path" "$temp_global_values"
+        {
+            echo "  CERTIFICATE_PRIVATE_KEY: \"$CERTPRIVATEKEY\""
+            echo "  CERTIFICATE_PUBLIC_KEY: \"$CERTPUBLICKEY\""
+            echo "  CERTIFICATESIGN_PRIVATE_KEY: \"$CERTIFICATESIGNPRKEY\""
+            echo "  CERTIFICATESIGN_PUBLIC_KEY: \"$CERTIFICATESIGNPUKEY\""
+        } >> "$temp_global_values"
+        mv "$temp_global_values" "$global_values_path"
+        echo "✅ Certificate keys appended to $global_values_path."
+    else
+        echo "⚠️ Certificate keys already found in $global_values_path; skipping append."
+    fi
 }
 
 certificate_config() {
@@ -314,7 +312,9 @@ install_component() {
             # Using --wait=false to not block if job is stuck deleting, relies on subsequent Helm install to recreate
             kubectl delete job keycloak-kids-keys -n sunbird --timeout=60s --wait=false || echo "⚠️ Failed to delete keycloak-kids-keys job, might already be gone or stuck."
         fi
-        # Removed redundant call to certificate_keys here as it's now called in main
+        # Ensure certificate keys are generated/present before learnbb is installed
+        # This call is idempotent, so it's safe to run again.
+        certificate_keys
     fi
 
     echo "Running helm upgrade --install for $component..."
@@ -322,17 +322,18 @@ install_component() {
         -f "$chart_path/values.yaml" $ed_values_flag \
         -f "$global_values_path" \
         -f "$global_cloud_values_path" \
-        --timeout 30m --debug --wait --wait-for-jobs || { echo "❌ Helm installation failed for $component. Check logs above for details."; exit 1; }
+        --timeout 45m --debug --wait --wait-for-jobs || { echo "❌ Helm installation failed for $component. Check logs above for details."; exit 1; }
     echo "✅ Component $component installed/upgraded successfully."
 }
 
 install_helm_components() {
     setup_kubernetes_prerequisites # Run this once for all components
 
-    # --- MODIFIED LINE START ---
-    # Changed order: "learnbb" now comes before "edbb" to ensure Keycloak ConfigMap is created
+    # --- START OF MODIFICATION ---
+    # Removed "monitoring" from the list of components to install.
+    # You can install it separately later if needed.
     local components=("learnbb" "edbb" "knowledgebb" "obsrvbb" "inquirybb" "additional")
-    # --- MODIFIED LINE END ---
+    # --- END OF MODIFICATION ---
 
     for component in "${components[@]}"; do
         install_component "$component"
@@ -544,10 +545,6 @@ main() {
         exit 1
     fi
     echo "✅ All required tools are present."
-
-    # --- NEW CALL START ---
-    certificate_keys # Create/update global-values.yaml and certs early, before Terraform backend needs it
-    # --- NEW CALL END ---
 
     create_tf_backend
     backup_configs
