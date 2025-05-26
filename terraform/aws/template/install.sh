@@ -160,9 +160,6 @@ setup_kubernetes_prerequisites() {
 certificate_keys() {
     echo -e "\n--- Generating RSA Keys for Certificate Signing ---"
 
-    # This path is relative to BASE_DIR/terraform/aws
-    # So if BASE_DIR is /home/ubuntu/AA_Sunbird_Demo, and environment is 'template'
-    # this will correctly point to /home/ubuntu/AA_Sunbird_Demo/terraform/aws/template
     local cert_dir="${BASE_DIR}/terraform/aws/$environment"
     mkdir -p "$cert_dir" || { echo "❌ Failed to create directory: $cert_dir"; exit 1; }
 
@@ -174,44 +171,47 @@ certificate_keys() {
         echo "✅ RSA keys generated in $cert_dir."
     fi
 
-    # Escape newlines for YAML
-    CERTPRIVATEKEY=$(cat "$cert_dir/certkey.pem" | tr '\n' '\\n' | sed 's/\\n$//') # Remove trailing newline escape
-    CERTPUBLICKEY=$(cat "$cert_dir/certpubkey.pem" | tr '\n' '\\n' | sed 's/\\n$//') # Remove trailing newline escape
+    # Read keys directly without escaping newlines initially for use with yq's literal style
+    local CERTPRIVATEKEY_RAW
+    local CERTPUBLICKEY_RAW
+    CERTPRIVATEKEY_RAW=$(cat "$cert_dir/certkey.pem")
+    CERTPUBLICKEY_RAW=$(cat "$cert_dir/certpubkey.pem")
 
-    # Alternative with double escape for certain usages (ensure this is needed)
-    CERTIFICATESIGNPRKEY=$(cat "$cert_dir/certkey.pem" | tr '\n' '\f' | sed 's/\f/\\\\n/g' | tr '\f' '\n' | sed 's/\\\\n$//')
-    CERTIFICATESIGNPUKEY=$(cat "$cert_dir/certpubkey.pem" | tr '\n' '\f' | sed 's/\f/\\\\n/g' | tr '\f' '\n' | sed 's/\\\\n$//')
+    # These specific variables are still double-escaped for potential compatibility with other parts of the chart
+    # (e.g., if they are expected as JSON string values later).
+    # If not strictly necessary, these could also be simplified to raw + literal block.
+    local CERTIFICATESIGNPRKEY_DOUBLE_ESCAPED
+    local CERTIFICATESIGNPUKEY_DOUBLE_ESCAPED
+    CERTIFICATESIGNPRKEY_DOUBLE_ESCAPED=$(echo "$CERTPRIVATEKEY_RAW" | tr '\n' '\f' | sed 's/\f/\\\\n/g' | tr '\f' '\n' | sed 's/\\\\n$//')
+    CERTIFICATESIGNPUKEY_DOUBLE_ESCAPED=$(echo "$CERTPUBLICKEY_RAW" | tr '\n' '\f' | sed 's/\f/\\\\n/g' | tr '\f' '\n' | sed 's/\\\\n$//')
 
     local global_values_path="${cert_dir}/global-values.yaml"
 
-    # Check if the file exists, if not, create it with apiVersion
     if [[ ! -f "$global_values_path" ]]; then
         echo "apiVersion: v2" > "$global_values_path"
         echo "Creating new global-values.yaml at $global_values_path."
-    fi
-
-    # Use a temporary file and atomically replace to avoid corruption and ensure proper appending
-    local temp_global_values="${global_values_path}.tmp"
-    if ! grep -q "CERTIFICATE_PRIVATE_KEY:" "$global_values_path"; then
-        # Append only if not already present
-        cp "$global_values_path" "$temp_global_values"
+        # For new file, append directly, using literal block style for multiline keys
         {
-            echo "global:" # Ensure 'global' block exists if it's a new file or not already present
-            echo "  CERTIFICATE_PRIVATE_KEY: \"$CERTPRIVATEKEY\""
-            echo "  CERTIFICATE_PUBLIC_KEY: \"$CERTPUBLICKEY\""
-            echo "  CERTIFICATESIGN_PRIVATE_KEY: \"$CERTIFICATESIGNPRKEY\""
-            echo "  CERTIFICATESIGN_PUBLIC_KEY: \"$CERTIFICATESIGNPUKEY\""
-            # ADDED THIS NEW LINE:
-            echo "  mobile_devicev2_key1: \"$CERTPRIVATEKEY\"" # Map the key adminutil is looking for
-
-        } >> "$temp_global_values"
-        mv "$temp_global_values" "$global_values_path"
+            echo "global:"
+            echo "  CERTIFICATE_PRIVATE_KEY: |-"
+            echo "$CERTPRIVATEKEY_RAW" | sed 's/^/    /' # Indent with 4 spaces for YAML literal block
+            echo "  CERTIFICATE_PUBLIC_KEY: |-"
+            echo "$CERTPUBLICKEY_RAW" | sed 's/^/    /' # Indent with 4 spaces
+            echo "  CERTIFICATESIGN_PRIVATE_KEY: \"$CERTIFICATESIGNPRKEY_DOUBLE_ESCAPED\""
+            echo "  CERTIFICATESIGN_PUBLIC_KEY: \"$CERTIFICATESIGNPUKEY_DOUBLE_ESCAPED\""
+            echo "  mobile_devicev2_key1: |-"
+            echo "$CERTPRIVATEKEY_RAW" | sed 's/^/    /' # Indent with 4 spaces
+        } >> "$global_values_path"
         echo "✅ Certificate keys appended to $global_values_path."
     else
-        echo "⚠️ Certificate keys already found in $global_values_path; skipping append."
-        # If keys exist, also ensure mobile_devicev2_key1 is updated/present via yq
-        yq e ".global.mobile_devicev2_key1 = \"$CERTPRIVATEKEY\"" -i "$global_values_path"
-        echo "✅ Ensured mobile_devicev2_key1 is present and updated in $global_values_path."
+        echo "⚠️ Certificate keys already found in $global_values_path; attempting to update/ensure entries."
+        # Use yq's load_str() for existing files to robustly insert multiline content
+        yq e ".global.CERTIFICATE_PRIVATE_KEY = load_str(\"$cert_dir/certkey.pem\")" -i "$global_values_path"
+        yq e ".global.CERTIFICATE_PUBLIC_KEY = load_str(\"$cert_dir/certpubkey.pem\")" -i "$global_values_path"
+        yq e ".global.CERTIFICATESIGN_PRIVATE_KEY = \"$CERTIFICATESIGNPRKEY_DOUBLE_ESCAPED\"" -i "$global_values_path"
+        yq e ".global.CERTIFICATESIGN_PUBLIC_KEY = \"$CERTIFICATESIGNPUKEY_DOUBLE_ESCAPED\"" -i "$global_values_path"
+        yq e ".global.mobile_devicev2_key1 = load_str(\"$cert_dir/certkey.pem\")" -i "$global_values_path"
+        echo "✅ Ensured all certificate keys and mobile_devicev2_key1 are present and updated in $global_values_path."
     fi
 }
 
@@ -521,8 +521,7 @@ check_pod_status() {
         echo "⚠️ One or more critical components' pods are not in a ready state. Manual inspection recommended."
     else
         echo "✅ All essential pods in namespace $namespace are reported as ready."
-    fi
-}
+    S}
 
 
 # --- Main execution flow ---
