@@ -178,9 +178,9 @@ certificate_keys() {
     CERTPRIVATEKEY=$(cat "$cert_dir/certkey.pem" | tr '\n' '\\n' | sed 's/\\n$//') # Remove trailing newline escape
     CERTPUBLICKEY=$(cat "$cert_dir/certpubkey.pem" | tr '\n' '\\n' | sed 's/\\n$//') # Remove trailing newline escape
 
-    # Alternative with double escape for certain usages (ensure this is needed)
-    CERTIFICATESIGNPRKEY=$(cat "$cert_dir/certkey.pem" | tr '\n' '\f' | sed 's/\f/\\\\n/g' | tr '\f' '\n' | sed 's/\\\\n$//')
-    CERTIFICATESIGNPUKEY=$(cat "$cert_dir/certpubkey.pem" | tr '\n' '\f' | sed 's/\f/\\\\n/g' | tr '\f' '\n' | sed 's/\\\\n$//')
+    # Fix: Changed the double-escape logic to standard single-escape for YAML within quotes
+    CERTIFICATESIGNPRKEY=$(cat "$cert_dir/certkey.pem" | tr '\n' '\\n' | sed 's/\\n$//')
+    CERTIFICATESIGNPUKEY=$(cat "$cert_dir/certpubkey.pem" | tr '\n' '\\n' | sed 's/\\n$//')
 
     local global_values_path="${cert_dir}/global-values.yaml"
 
@@ -329,11 +329,10 @@ install_component() {
 install_helm_components() {
     setup_kubernetes_prerequisites # Run this once for all components
 
-    # --- START OF MODIFICATION ---
-    # Removed "monitoring" from the list of components to install.
-    # You can install it separately later if needed.
+    # --- MODIFIED LINE START ---
+    # Changed order: "learnbb" now comes before "edbb" to ensure Keycloak ConfigMap is created
     local components=("learnbb" "edbb" "knowledgebb" "obsrvbb" "inquirybb" "additional")
-    # --- END OF MODIFICATION ---
+    # --- MODIFIED LINE END ---
 
     for component in "${components[@]}"; do
         install_component "$component"
