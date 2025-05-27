@@ -25,11 +25,11 @@ inputs = {
   eks_cluster_name           = "demo-sunbirdedAA-eks"
   cluster_role_name          = "sunbirdedAA-demo-EKSClusterRole"
   node_role_name             = "sunbirdedAA-demo-EKSNodeRole"
-  instance_type              = "m5a.4xlarge"
-  disk_size                  = 500 # Increase to 500GiB or more
-  desired_size               = 3
-  max_size                   = 3
-  min_size                   = 3
+  instance_type              = "c6a.8xlarge"
+  disk_size                  = 1024 # Increase to 500GiB or more
+  desired_size               = 1
+  max_size                   = 1
+  min_size                   = 1
 
   bucket_name                = "sunbirdedaa-demo-bucket"
   storage_account_name       = "sunbirdedaa-demo-bucket"

@@ -339,7 +339,7 @@ install_helm_components() {
     # --- START OF MODIFICATION ---
     # Removed "monitoring" from the list of components to install.
     # You can install it separately later if needed.
-    local components=("learnbb" "edbb" "knowledgebb" "obsrvbb" "inquirybb" "additional")
+    local components=("monitoring" "learnbb" "edbb" "knowledgebb" "obsrvbb" "inquirybb" "additional")
     # --- END OF MODIFICATION ---
 
     for component in "${components[@]}"; do
