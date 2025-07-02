@@ -34,7 +34,10 @@ spec:
             - name: KONG_PG_HOST
               value: {{ .Values.kong_pg_host }}
             - name: KONG_PG_PASSWORD
-              value: {{ .Values.kong_pg_password }}
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql
+                  key: postgresql-password
             - name: KONG_PG_USER
               value: {{ .Values.kong_pg_user }}
             - name: KONG_PROXY_ACCESS_LOG

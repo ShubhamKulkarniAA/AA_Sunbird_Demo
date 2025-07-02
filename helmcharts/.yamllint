@@ -1,0 +1,4 @@
+# ~/AA_Sunbird_Demo/helmcharts/learnbb/.yamllint
+extends: default
+rules:
+  line-length: disable

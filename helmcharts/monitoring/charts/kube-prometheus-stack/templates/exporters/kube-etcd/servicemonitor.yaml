@@ -6,12 +6,13 @@ metadata:
   namespace: {{ template "kube-prometheus-stack.namespace" . }}
   labels:
     app: {{ template "kube-prometheus-stack.name" . }}-kube-etcd
-    # The following lines were previously commented out and are now removed.
-    # They were related to dynamic label generation and were causing YAML parsing errors.
+    {{- with .Values.kubeEtcd.serviceMonitor.additionalLabels }}
+    {{ toYaml . | nindent 4 }}
+    {{- end }}
+    {{- include "kube-prometheus-stack.labels" . | nindent 4 }}
 spec:
   jobLabel: jobLabel
-  # The following line was previously commented out and is now removed.
-  # It was related to scrape limits and was also causing YAML parsing errors.
+  {{- include "servicemonitor.scrapeLimits" .Values.kubeEtcd.serviceMonitor | indent 2 }}
   selector:
     matchLabels:
       app: {{ template "kube-prometheus-stack.name" . }}-kube-etcd
@@ -20,37 +21,38 @@ spec:
     matchNames:
       - "kube-system"
   endpoints:
-  - port: http-metrics
-    {{- if .Values.kubeEtcd.serviceMonitor.interval }}
-    interval: {{ .Values.kubeEtcd.serviceMonitor.interval }}
-    {{- end }}
-    bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
-    {{- if .Values.kubeEtcd.serviceMonitor.proxyUrl }}
-    proxyUrl: {{ .Values.kubeEtcd.serviceMonitor.proxyUrl}}
-    {{- end }}
-    {{- if eq .Values.kubeEtcd.serviceMonitor.scheme "https" }}
-    scheme: https
-    tlsConfig:
-      {{- if .Values.kubeEtcd.serviceMonitor.serverName }}
-      serverName: {{ .Values.kubeEtcd.serviceMonitor.serverName }}
+    - port: http-metrics
+      {{- if .Values.kubeEtcd.serviceMonitor.interval }}
+      interval: {{ .Values.kubeEtcd.serviceMonitor.interval }}
       {{- end }}
-      {{- if .Values.kubeEtcd.serviceMonitor.caFile }}
-      caFile: {{ .Values.kubeEtcd.serviceMonitor.caFile }}
+      bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+      {{- if .Values.kubeEtcd.serviceMonitor.proxyUrl }}
+      proxyUrl: {{ .Values.kubeEtcd.serviceMonitor.proxyUrl }}
       {{- end }}
-      {{- if  .Values.kubeEtcd.serviceMonitor.certFile }}
-      certFile: {{ .Values.kubeEtcd.serviceMonitor.certFile }}
+      {{- if eq .Values.kubeEtcd.serviceMonitor.scheme "https" }}
+      scheme: https
+      tlsConfig:
+        {{- if .Values.kubeEtcd.serviceMonitor.serverName }}
+        serverName: {{ .Values.kubeEtcd.serviceMonitor.serverName }}
+        {{- end }}
+        {{- if .Values.kubeEtcd.serviceMonitor.caFile }}
+        caFile: {{ .Values.kubeEtcd.serviceMonitor.caFile }}
+        {{- end }}
+        {{- if  .Values.kubeEtcd.serviceMonitor.certFile }}
+        certFile: {{ .Values.kubeEtcd.serviceMonitor.certFile }}
+        {{- end }}
+        {{- if .Values.kubeEtcd.serviceMonitor.keyFile }}
+        keyFile: {{ .Values.kubeEtcd.serviceMonitor.keyFile }}
+        {{- end }}
+        insecureSkipVerify: {{ .Values.kubeEtcd.serviceMonitor.insecureSkipVerify }}
       {{- end }}
-      {{- if .Values.kubeEtcd.serviceMonitor.keyFile }}
-      keyFile: {{ .Values.kubeEtcd.serviceMonitor.keyFile }}
-      {{- end}}
-      insecureSkipVerify: {{ .Values.kubeEtcd.serviceMonitor.insecureSkipVerify }}
-    {{- end }}
-{{- if .Values.kubeEtcd.serviceMonitor.metricRelabelings }}
-    metricRelabelings:
-{{ tpl (toYaml .Values.kubeEtcd.serviceMonitor.metricRelabelings | indent 4) . }}
+      {{- if .Values.kubeEtcd.serviceMonitor.metricRelabelings }}
+      metricRelabelings:
+        {{- tpl (toYaml .Values.kubeEtcd.serviceMonitor.metricRelabelings | indent 4) . }}
+      {{- end }}
+      {{- if .Values.kubeEtcd.serviceMonitor.relabelings }}
+      relabelings:
+        {{- tpl (toYaml .Values.kubeEtcd.serviceMonitor.relabelings | indent 4) . }}
+      {{- end }}
 {{- end }}
-{{- if .Values.kubeEtcd.serviceMonitor.relabelings }}
-    relabelings:
-{{ tpl (toYaml .Values.kubeEtcd.serviceMonitor.relabelings | indent 4) . }}
-{{- end }}
-{{- end }}
+

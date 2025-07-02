@@ -23,5 +23,12 @@ spec:
           envFrom:
           - configMapRef:
               name: {{ include "common.names.fullname" . }}-env
+          env:
+          - name: PGPASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: postgresql
+                key: postgresql-password
+
       restartPolicy: Never
   backoffLimit: 30

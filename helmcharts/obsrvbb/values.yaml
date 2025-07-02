@@ -10,7 +10,7 @@ provisioningAnnotations: &provisioningAnnotations
 redis: &redis
   enabled: true
   nameOverride: "redis"
-  fullnameOverride: "redis"
+  fullnameOverride: "redis-obb"
   auth:
     enabled: false
   host: "redis-master"
@@ -26,7 +26,7 @@ redis: &redis
 elasticsearch: &es
   enabled: true
   nameOverride: "elasticsearch"
-  fullnameOverride: "elasticsearch"
+  fullnameOverride: "elasticsearch-obb"
   host: "elasticsearch"
   port: 9200
   image:
@@ -62,9 +62,9 @@ elasticsearch: &es
     repository: bitnami/bitnami-shell-archived
     tag: 11-debian-11-r54
 
-
 postgresql: &postgresql
   enabled: true
+  fullnameOverride: "postgresql-obb"
   image:
     repository: bitnami/postgresql
     tag: 11.14.0-debian-10-r49
@@ -77,14 +77,14 @@ postgresql: &postgresql
   persistence:
     size: 25Gi
   databases:
-  - name: "analytics"
-  - name: "druid_raw"
-  - name: "druid"
+    - name: "analytics"
+    - name: "druid_raw"
+    - name: "druid"
 
 cassandra: &cassandra
   enabled: true
   nameOverride: "cassandra"
-  fullnameOverride: "cassandra"
+  fullnameOverride: "cassandra-obb"
   host: "cassandra"
   port: 9042
   provisioning:
@@ -102,8 +102,8 @@ cassandra: &cassandra
     size: 25Gi
 
 zookeeper: &zookeeper
-  fullnameOverride: zookeeper
   nameOverride: zookeeper
+  fullnameOverride: zookeeper-obb
   host: "zookeeper"
   port: 2181
   persistence:
@@ -113,7 +113,7 @@ kafka: &kafka
   zookeeper: *zookeeper
   enabled: true
   nameOverride: "kafka"
-  fullnameOverride: "kafka"
+  fullnameOverride: "kafka-obb"
   clientProtocol: PLAINTEXT
   host: "kafka"
   port: 9092
@@ -127,50 +127,17 @@ kafka: &kafka
     size: 25Gi
   provisioning:
     nameOverride: "provisioning"
-    fullnameOverride: "provisioning"
+    fullnameOverride: "provisioning-obb"
     annotations:
       "helm.sh/hook-weight": "-4"
     replicationFactor: 1
     numPartitions: 1
     topics:
-    - name: sunbird.telemetry.ingest
-    - name: "{{ .Values.global.env }}.druid.events.summary"
-    - name: "{{ .Values.global.env }}.druid.events.telemetry"
-    - name: "{{ .Values.global.env }}.druid.events.error"
-    - name: telemetry.raw
-    - name: sunbirddev.telemetry.derived
-    - name: sunbirddev.analytics_metrics
-    - name: sunbirddev.analytics.job_queue
-    - name: sunbirddev.telemetry.sink
-    - name: sunbirddev.telemetry.metrics
-    - name: sunbirddev.telemetry.assess
-    - name: sunbirddev.druid.report.job_queue
-    - name: "{{ .Values.global.env }}.telemetry.ingest"
-    - name: "{{ .Values.global.env }}.telemetry.raw"
-    - name: "{{ .Values.global.env }}.druid.events.log"
-    - name: "{{ .Values.global.env }}.telemetry.extractor.duplicate"
-    - name: "{{ .Values.global.env }}.telemetry.failed"
-    - name: "{{ .Values.global.env }}.telemetry.assess.raw"
-    - name: "{{ .Values.global.env }}.telemetry.audit"
-    - name: "{{ .Values.global.env }}.telemetry.error"
-    - name: "{{ .Values.global.env }}.telemetry.unique"
-    - name: "{{ .Values.global.env }}.telemetry.duplicate"
-    - name: "{{ .Values.global.env }}.telemetry.unique.secondary"
-    - name: "{{ .Values.global.env }}.telemetry.unique.primary"
-    - name: "{{ .Values.global.env }}.telemetry.derived"
-    - name: "{{ .Values.global.env }}.telemetry.denorm"
-    - name: "{{ .Values.global.env }}.telemetry.derived.unique"
-    - name: "{{ .Values.global.env }}.druid.events.summary"
-    - name: "{{ .Values.global.env }}.druid.events.telemetry"
-    - name: "{{ .Values.global.env }}.events.deviceprofile"
-    - name: "{{ .Values.global.env }}.learning.graph.events"
-    - name: "{{ .Values.global.env }}.telemetry.assess"
-    - name: "{{ .Values.global.env }}.telemetry.assess.failed"
-    - name: "{{ .Values.global.env }}.issue.certificate.request"
-    parallel: 1
+      - name: telemetry.raw
 
 druid: &druid
   enabled: true
+  fullnameOverride: "druid-obb"
   host: druid-raw-routers
   port: 8888
   coordinatorhost: druid-raw-coordinators
@@ -365,33 +332,69 @@ confVolume: &confVolume
               curl -o /data/analytics/models-2.0/data-products-1.0/lib/data-products-1.0.jar "https://{{ .Values.global.object_storage_endpoint }}/{{ .Values.global.public_container_name }}/artifacts-{{.Values.global.release_version}}/data-products-1.0.jar"
               curl -o /data/analytics/models-2.0/data-products-1.0/data-products-1.0.jar "https://{{ .Values.global.object_storage_endpoint }}/{{ .Values.global.public_container_name }}/artifacts-{{.Values.global.release_version}}/data-products-1.0.jar"
 
+
 spark: &spark
   enabled: true
   nameOverride: "spark"
-  fullnameOverride: "spark"
+  fullnameOverride: "spark-obb"
   image:
     registry: sunbirded.azurecr.io
     repository: spark
     tag: 3.2.4_2
+
+  persistence:
+    spark_data_pvc:
+      size: 25Gi
+      accessModes: ReadWriteOnce
+      storageClassName: standard
+    log_data_pvc:
+      size: 10Gi
+      accessModes: ReadWriteOnce
+      storageClassName: standard
+
   master:
-      <<: *confVolume
-      extraEnvVars:
-        - name: BITNAMI_DEBUG
-          value: "false"
-        - name: SPARK_MODE
-          value: master
-        - name: SPARK_DAEMON_MEMORY
-          value: ""
-        - name: SPARK_MASTER_PORT
-          value: "7077"
-        - name: SPARK_MASTER_WEBUI_PORT
-          value: "8080"
-        - name: KAFKA_BROKER_HOST
-          value: "kafka:9092"
-        - name: ENV
-          value: "sunbirddev"
+    extraEnvVars:
+      - name: BITNAMI_DEBUG
+        value: "false"
+      - name: SPARK_MODE
+        value: master
+      - name: SPARK_DAEMON_MEMORY
+        value: ""
+      - name: SPARK_MASTER_PORT
+        value: "7077"
+      - name: SPARK_MASTER_WEBUI_PORT
+        value: "8080"
+      - name: KAFKA_BROKER_HOST
+        value: "kafka:9092"
+      - name: ENV
+        value: "sunbirddev"
+    extraVolumes:
+      - name: spark-data
+        persistentVolumeClaim:
+          claimName: spark-data-pvc
+      - name: log-directory
+        persistentVolumeClaim:
+          claimName: log-data-pvc
+    extraVolumeMounts:
+      - name: spark-data
+        mountPath: /data
+      - name: log-directory
+        mountPath: /data/analytics/scripts/logs
+
   worker:
-      replicaCount: 1
+    replicaCount: 1
+    extraVolumes:
+      - name: spark-data
+        persistentVolumeClaim:
+          claimName: spark-data-pvc
+      - name: log-directory
+        persistentVolumeClaim:
+          claimName: log-data-pvc
+    extraVolumeMounts:
+      - name: spark-data
+        mountPath: /data
+      - name: log-directory
+        mountPath: /data/analytics/scripts/logs
 
 
 global:
@@ -408,6 +411,10 @@ global:
   keycloak_kid_keys_configmap: keycloak-kids-keys
   kong_desktop_device_consumer_names_for_opa: '["portal", "desktop"]'
   spark_home: /data/analytics/spark-3.1.3-bin-hadoop2.7
+  storage_class: gp2
+  serviceAccount:
+    create: true
+    name: secor  
 
 analytics:
   opa_enabled: true
@@ -419,11 +426,10 @@ migration:
   postgresql:
     waitTimeout: 120
 
-
 superset:
   enabled: true
   image:
     repository: sunbirded.azurecr.io/superset
     tag: release-7.0.0
     pullPolicy: Always
-  
+

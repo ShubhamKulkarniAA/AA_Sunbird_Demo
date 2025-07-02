@@ -6,7 +6,7 @@ replicaCount: 1
 image:
   repository: sunbirded.azurecr.io/keycloak-kids-keys
   tag: "0.1.5"
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
   pullSecrets: []
 
 podAnnotations: {}
@@ -105,6 +105,8 @@ sidecars: {}
   #   args: ["-c", "tail -f /var/log/app.log"] # Run a shell script that tails the log file
 
 POSTGRES_DB: "keycloak"
+POSTGRES_USERNAME: "postgres"
+POSTGRES_PASSWORD: "Sunbird123"
 KEYCLOAK_URL: "keycloak"
 KEYCLOAK_PORT: "8080"
 KEYCLOAK_REALM: "sunbird"

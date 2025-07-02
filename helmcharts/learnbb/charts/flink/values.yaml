@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: sunbirded.azurecr.io/data-pipeline
-  tag: release-7.0.0_RC5_4a07143_21
+  tag: release-7.0.0_RC5_b06135e
   pullPolicy: IfNotPresent
   pullSecrets: []
 
@@ -69,7 +69,7 @@ configmap:
   mountPath: /config
 
 serviceAccount:
-  create: true
+  create: false
 
 serviceMonitor:
   enabled: false
@@ -128,19 +128,18 @@ proto: &proto "https"
 instance: &instance "dev"
 
 cloud_storage: &cloud_storage
-  type: "azure"
+  type: "aws"
   key: "dummyAccessKey"
   secret: "dummySecretKey"
   container: "dummyContainer"
   endpoint: "https://dummy.endpoint.com"
-  cloud_service_provider: "azure"
+  cloud_service_provider: "aws"
   cloud_storage_content_bucketname: "content-bucket"
   cloud_private_storage_accountname: "storage-account"
   cloud_private_storage_secret: "s3cr3t-key"
 
 core_vault_sunbird_fcm_account_key: "your-fcm-account-key"
 sunbird_msg_91_auth: "your-msg-91-auth-key"
-
 cassandra_isMultiDCEnabled: false
 kp_schema_base_path: "https://{{ .Values.global.object_storage_endpoint }}./{{ .Values.global.public_container_name }}/schemas/local"
 lms_service_base_url: "http://lms-service:9000"
@@ -160,7 +159,7 @@ enable_suppress_exception: false
 enable_rc_certificate: true
 rc_bad_char_list: "char_list"
 
-cert_cloud_storage_type: "azure"
+cert_cloud_storage_type: "aws"
 cert_cloud_storage_secret: "{{ .Values.global.cloud_storage_secret_key }}"
 cert_cloud_storage_key: "{{ .Values.global.cloud_storage_access_key }}"
 cert_cloud_storage_endpoint: ""
@@ -358,17 +357,17 @@ base_config: |
 
       {{- if eq "oci" .Values.global.checkpoint_store_type }}
       statebackend {
-        base.url = "s3://{{ .Values.global.public_container_name }}/checkpoint"
+        base.url = "s3://{{ .Values.global.private_container_name }}/checkpoint"
       }
 
       {{- else if eq "azure" .Values.global.checkpoint_store_type }}
       statebackend {
-        base.url = "wasbs://{{ .Values.global.public_container_name }}@{{ .Values.global.object_storage_endpoint }}/checkpoint"
+        base.url = "wasbs://{{ .Values.global.private_container_name }}@{{ .Values.global.object_storage_endpoint }}/checkpoint"
       }
 
       {{- else if eq "gcs" .Values.global.checkpoint_store_type }}
       statebackend {
-        base.url = "gs://{{ .Values.global.public_container_name }}/checkpoint"
+        base.url = "gs://{{ .Values.global.private_container_name }}/checkpoint"
       }
       {{- else }}
       # No valid checkpoint_store_type configured, skipping statebackend.
@@ -428,13 +427,15 @@ flink_jobs:
   activity-aggregate-updater:
     enabled: true
     config: |+
-      include file("/data/flink/conf/base-config.conf")
+      include file("file:///data/flink/conf/base-config.conf")
       kafka {
         input.topic = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_topic_course_batch_job_request "context" $) }}"
         output.audit.topic = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_topic_telemetry_raw "context" $) }}"
         output.failed.topic = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_topic_activity_agg_failed "context" $) }}"
         output.certissue.topic = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_topic_certificate_request "context" $) }}"
         groupId = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_group_activity_agg "context" $) }}"
+        broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+        zookeeper = "{{ .Values.global.zookeeper.host }}:{{ .Values.global.zookeeper.port }}"
       }
       task {
         window.shards = "{{ .Values.activity_agg_window_shards }}"
@@ -446,8 +447,13 @@ flink_jobs:
         dedup.parallelism = "{{ .Values.activity_agg_dedup_parallelism }}"
         activity.agg.parallelism = "{{ .Values.activity_agg_parallelism }}"
         enrolment.complete.parallelism = "{{ .Values.enrolment_complete_parallelism }}"
+        parallelism = "{{ .Values.activity_agg_parallelism }}"
+        checkpointing.compressed = true
       }
       lms-cassandra {
+        isMultiDCEnabled = "{{ .Values.cassandra_isMultiDCEnabled }}"
+        host = "{{ .Values.global.redis.host }}"
+        port = "{{ .Values.global.redis.port }}"
         keyspace = "{{ .Values.middleware_course_keyspace }}"
         consumption.table = "{{ .Values.middleware_consumption_table }}"
         user_activity_agg.table = "{{ .Values.middleware_user_activity_agg_table }}"
@@ -488,18 +494,28 @@ flink_jobs:
   relation-cache-updater:
     enabled: true
     config: |+
-      include file("/data/flink/conf/base-config.conf")
+      include file("file:///data/flink/conf/base-config.conf")
       kafka {
         input.topic = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_topic_content_publish_request "context" $) }}"
         groupId = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_group_relation_cache_updater "context" $) }}"
+        broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+        zookeeper = "{{ .Values.global.zookeeper.host }}:{{ .Values.global.zookeeper.port }}"
       }
       task {
+        restart-strategy.attempts = "{{ .Values.restart_attempts }}" # max 3 restart attempts
+        restart-strategy.delay = 240000 # in milli-seconds # on max restarts (3) within 4 min the job will fail.
         consumer.parallelism = "{{ .Values.relation_cache_updater_consumer_parallelism }}"
         parallelism = "{{ .Values.relation_cache_updater_parallelism }}"
+        checkpointing.interval = "{{ .Values.activity_agg_checkpointing_interval }}"
+        checkpointing.pause.between.seconds = "{{ .Values.activity_agg_checkpointing_pause_interval }}"
+        checkpointing.compressed = true
       }
       lms-cassandra {
-            keyspace = "{{ include "common.tplvalues.render" (dict "value" .Values.middleware_hierarchy_keyspace "context" $) }}"
-            table = "{{ .Values.middleware_content_hierarchy_table }}"
+        isMultiDCEnabled = "{{ .Values.cassandra_isMultiDCEnabled }}"
+        host = "{{ .Values.global.redis.host }}"
+        port = "{{ .Values.global.redis.port }}"
+        keyspace = "{{ include "common.tplvalues.render" (dict "value" .Values.middleware_hierarchy_keyspace "context" $) }}"
+        table = "{{ .Values.middleware_content_hierarchy_table }}"
       }
       redis {
         database.index = 10
@@ -521,27 +537,37 @@ flink_jobs:
   enrolment-reconciliation:
     enabled: true
     config: |+
-      include file("/data/flink/conf/base-config.conf")
+      include file("file:///data/flink/conf/base-config.conf")
       kafka {
+        broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
         input.topic = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_topic_enrolment_sync_request "context" $) }}"
         output.audit.topic = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_topic_telemetry_raw "context" $) }}"
         output.failed.topic = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_topic_activity_agg_failed "context" $) }}"
         output.certissue.topic = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_topic_certificate_request "context" $) }}"
         groupId = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_group_enrolment_reconciliation "context" $) }}"
-      }
+        zookeeper = "{{ .Values.global.zookeeper.host }}:{{ .Values.global.zookeeper.port }}"
+        }
       task {
         restart-strategy.attempts = "{{ .Values.restart_attempts }}" # max 3 restart attempts
         restart-strategy.delay = 240000 # in milli-seconds # on max restarts (3) within 4 min the job will fail.
         consumer.parallelism = "{{ .Values.enrolment_reconciliation_consumer_parallelism }}"
         enrolment.reconciliation.parallelism = "{{ .Values.enrolment_reconciliation_parallelism }}"
         enrolment.complete.parallelism = "{{ .Values.enrolment_complete_parallelism }}"
+        checkpointing.interval = "{{ .Values.activity_agg_checkpointing_interval }}"
+        checkpointing.pause.between.seconds = "{{ .Values.activity_agg_checkpointing_pause_interval }}"
+        checkpointing.compressed = true
+        parallelism = "{{ .Values.enrolment_reconciliation_parallelism }}"
       }
       lms-cassandra {
         keyspace = "{{ .Values.middleware_course_keyspace }}"
         consumption.table = "{{ .Values.middleware_consumption_table }}"
         user_activity_agg.table = "{{ .Values.middleware_user_activity_agg_table }}"
         user_enrolments.table = "user_enrolments"
+        host = "{{ .Values.global.cassandra.host }}"
+        port = "{{ .Values.global.cassandra.port }}"
+        isMultiDCEnabled = "{{ .Values.cassandra_isMultiDCEnabled }}"
       }
+      
       redis {
         database {
           relationCache.id = 10
@@ -567,12 +593,14 @@ flink_jobs:
   collection-cert-pre-processor:
     enabled: true
     config: |+
-      include file("/data/flink/conf/base-config.conf")
+      include file("file:///data/flink/conf/base_config.conf")
       kafka {
+        broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
         input.topic = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_topic_certificate_request "context" $) }}"
         output.topic = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_topic_generate_certificate_request "context" $) }}"
         output.failed.topic = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_topic_certificate_failed "context" $) }}"
         groupId = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_group_collection_pre_processor "context" $) }}"
+        zookeeper = "{{ .Values.global.zookeeper.host }}:{{ .Values.global.zookeeper.port }}"
       }
       task {
         restart-strategy.attempts = "{{ .Values.restart_attempts }}" # max 3 restart attempts
@@ -580,8 +608,14 @@ flink_jobs:
         parallelism = "{{ .Values.collection_cert_pre_processor_consumer_parallelism }}"
         consumer.parallelism = "{{ .Values.collection_cert_pre_processor_consumer_parallelism }}"
         generate_certificate.parallelism = "{{.Values.generate_certificate_parallelism }}"
+        checkpointing.interval = "{{ .Values.activity_agg_checkpointing_interval }}"
+        checkpointing.pause.between.seconds = "{{ .Values.activity_agg_checkpointing_pause_interval }}"
+        checkpointing.compressed = true
       }
       lms-cassandra {
+        host = "{{ .Values.global.cassandra.host }}"
+        port = "{{ .Values.global.cassandra.port }}"
+        isMultiDCEnabled = "{{ .Values.cassandra_isMultiDCEnabled }}"
         keyspace = "{{ .Values.middleware_course_keyspace }}"
         consumption.table = "{{ .Values.middleware_consumption_table }}"
         user_enrolments.table = "{{ .Values.middleware_user_enrolments_table }}"
@@ -627,24 +661,35 @@ flink_jobs:
   collection-certificate-generator:
     enabled: true
     config: |+
-      include file("/data/flink/conf/base-config.conf")
+      include file("file:///data/flink/conf/base-config.conf")
       kafka {
+        broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
         input.topic = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_topic_generate_certificate_request "context" $) }}"
         output.audit.topic = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_topic_telemetry_raw "context" $) }}"
         groupId = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_group_certificate_generator "context" $) }}"
+        zookeeper = "{{ .Values.global.zookeeper.host }}:{{ .Values.global.zookeeper.port }}"
       }
       task {
         restart-strategy.attempts = "{{ .Values.restart_attempts }}" # max 3 restart attempts
         restart-strategy.delay = 240000 # in milli-seconds # on max restarts (3) within 4 min the job will fail.
         consumer.parallelism = "{{ .Values.collection_certificate_generator_consumer_parallelism }}"
         parallelism = "{{ .Values.collection_certificate_generator_parallelism }}"
+        checkpointing.interval = "{{ .Values.activity_agg_checkpointing_interval }}"
+        checkpointing.pause.between.seconds = "{{ .Values.activity_agg_checkpointing_pause_interval }}"
+        checkpointing.compressed = true
       }
       lms-cassandra {
+        host = "{{ .Values.global.cassandra.host }}"
+        port = "{{ .Values.global.cassandra.port }}"
+        isMultiDCEnabled = "{{ .Values.cassandra_isMultiDCEnabled }}"
         keyspace = "{{ .Values.middleware_course_keyspace }}"
         user_enrolments.table = "{{ .Values.middleware_user_enrolments_table }}"
         course_batch.table = "{{ .Values.middleware_course_batch_table }}"
         sbkeyspace = "{{ .Values.registry_sunbird_keyspace }}"
         certreg.table ="{{ .Values.cert_registry_table }}"
+      }
+      es {
+        basePath = "{{.Values.global.elasticsearch.host}}:{{.Values.global.elasticsearch.port}}"
       }
       cert_domain_url = "https://{{ .Values.global.domain }}"
       cert_container_name = "{{ .Values.global.public_container_name }}"
@@ -664,6 +709,7 @@ flink_jobs:
         rc.entity = "{{ .Values.cert_rc_entity }}"
         rc.rcApiKey = "{{ .Values.sunbird_api_auth_token }}"
       }
+      sunbird_instance_name = "Sunbird"
       enable.suppress.exception = "{{ include "common.tplvalues.render" (dict "value" .Values.collection_certificate_generator_enable_suppress_exception "context" $) }}"
       enable.rc.certificate = "{{ include "common.tplvalues.render" (dict "value" .Values.collection_certificate_generator_enable_rc_certificate "context" $) }}"
       task.rc.badcharlist = "{{ include "common.tplvalues.render" (dict "value" .Values.collection_certificate_generator_rc_badcharlist "context" $) }}"
@@ -679,24 +725,35 @@ flink_jobs:
   legacy-certificate-migrator:
     enabled: true
     config: |+
-      include file("/data/flink/conf/base-config.conf")
+      include file("file:///data/flink/conf/base-config.conf")
       kafka {
         input.topic = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_topic_migrate_certificate_request "context" $) }}"
         output.audit.topic = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_topic_telemetry_raw "context" $) }}"
         groupId = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_group_certificate_migrator "context" $) }}"
+        broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+        zookeeper = "{{ .Values.global.zookeeper.host }}:{{ .Values.global.zookeeper.port }}"
       }
       task {
         restart-strategy.attempts = "{{ .Values.restart_attempts }}" # max 3 restart attempts
         restart-strategy.delay = 240000 # in milli-seconds # on max restarts (3) within 4 min the job will fail.
         consumer.parallelism = "{{ .Values.legacy_certificate_migrator_consumer_parallelism }}"
         parallelism = "{{ .Values.legacy_certificate_migrator_parallelism }}"
+        checkpointing.interval = "{{ .Values.activity_agg_checkpointing_interval }}"
+        checkpointing.pause.between.seconds = "{{ .Values.activity_agg_checkpointing_pause_interval }}"
+        checkpointing.compressed = true
       }
       lms-cassandra {
+        host = "{{ .Values.global.cassandra.host }}"
+        port = "{{ .Values.global.cassandra.port }}"
+        isMultiDCEnabled = "{{ .Values.cassandra_isMultiDCEnabled }}"
         keyspace = "{{ .Values.middleware_course_keyspace }}"
         user_enrolments.table = "{{ .Values.middleware_user_enrolments_table }}"
         course_batch.table = "{{ .Values.middleware_course_batch_table }}"
         sbkeyspace = "{{ .Values.registry_sunbird_keyspace }}"
         certreg.table ="{{ .Values.cert_registry_table }}"
+      }
+      es {
+        basePath = "{{.Values.global.elasticsearch.host}}:{{.Values.global.elasticsearch.port}}"
       }
       cert_domain_url = "{{ .Values.global.domain }}"
       cert_container_name = "{{ .Values.global.public_container_name }}"
@@ -730,19 +787,30 @@ flink_jobs:
   merge-user-courses:
     enabled: true
     config: |+
-      include file("/data/flink/conf/base-config.conf")
+      include file("file:///data/flink/conf/base-config.conf")
       kafka {
         input.topic = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_topic_lms_user_account "context" $) }}"
         output.failed.topic = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_topic_learning_failed "context" $) }}"
         groupId = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_group_merge_courses "context" $) }}"
         output.course.batch.updater.topic = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_topic_course_batch_job_request "context" $) }}"
+        broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+        zookeeper = "{{ .Values.global.zookeeper.host }}:{{ .Values.global.zookeeper.port }}"
+      
       }
       task {
+        restart-strategy.attempts = "{{ .Values.restart_attempts }}" # max 3 restart attempts
+        restart-strategy.delay = 240000 # in milli-seconds # on max restarts (3) within 4 min the job will fail.
         consumer.parallelism = "{{ .Values.merge_user_courses_consumer_parallelism }}"
         parallelism = "{{ .Values.merge_user_courses_parallelism }}"
         course_batch_updater.parallelism = "{{ .Values.merge_user_courses_course_batch_parallelism }}"
+        checkpointing.interval = "{{ .Values.activity_agg_checkpointing_interval }}"
+        checkpointing.pause.between.seconds = "{{ .Values.activity_agg_checkpointing_pause_interval }}"
+        checkpointing.compressed = true
       }
       lms-cassandra {
+        host = "{{ .Values.global.cassandra.host }}"
+        port = "{{ .Values.global.cassandra.port }}"
+        isMultiDCEnabled = "{{ .Values.cassandra_isMultiDCEnabled }}"
         keyspace = "{{ .Values.middleware_course_keyspace }}"
         content_consumption.table = "{{ .Values.middleware_consumption_table }}"
         user_enrolments.table = "{{ .Values.middleware_user_enrolments_table }}"
@@ -761,25 +829,41 @@ flink_jobs:
   assessment-aggregator:
     enabled: true
     config: |+
-      include file("/data/flink/conf/base-config.conf")
+      include file("file:///data/flink/conf/base-config.conf")
       kafka {
         producer.broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
         consumer.broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
         zookeeper = "{{ .Values.global.zookeeper.host }}:{{ .Values.global.zookeeper.port }}"
+        restart-strategy.attempts = "{{ .Values.restart_attempts }}"
+        restart-strategy.delay = 240000 # in milli-seconds # on max restarts (3) within 4 min the job will fail.
         input.topic = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_topic_assessment "context" $) }}"
         failed.topic= "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_topic_assessment_failed "context" $) }}"
         groupId = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_group_assessment_aggregator "context" $) }}"
         output.certissue.topic = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_topic_certificate_request "context" $) }}"
+        producer {
+          max-request-size = 1572864
+          batch.size = 98304
+          linger.ms = 10
+        }
       }
       task {
+        restart-strategy.attempts = "{{ .Values.restart_attempts }}" # max 3 restart attempts
+        restart-strategy.delay = 240000 # in milli-seconds # on max restarts (3) within 4 min the job will fail.
         consumer.parallelism = "{{ .Values.assessaggregator_consumer_parallelism }}"
         downstream.parallelism = "{{ .Values.assessaggregator_downstream_parallelism }}"
+        parallelism = "{{ .Values.collection_cert_pre_processor_consumer_parallelism }}"
+        checkpointing.interval = "{{ .Values.activity_agg_checkpointing_interval }}"
+        checkpointing.pause.between.seconds = "{{ .Values.activity_agg_checkpointing_pause_interval }}"
+        checkpointing.compressed = true
         assessaggregator {
           parallelism = "{{ .Values.assessaggregator_parallelism }}"
         }
         scoreaggregator.parallelism = "{{ .Values.assessaggregator_scoreaggregator_parallelism }}"
       }
       lms-cassandra {
+        host = "{{ .Values.global.cassandra.host }}"
+        port = "{{ .Values.global.cassandra.port }}"
+        isMultiDCEnabled = "{{ .Values.cassandra_isMultiDCEnabled }}"
         keyspace = "{{ .Values.middleware_cassandra_courses_keyspace }}"
         table = "{{ .Values.middleware_cassandra_assessment_aggregator_table }}"
         questionudttype= "{{ .Values.middleware_cassandra_assessment_question_type }}"
@@ -787,14 +871,21 @@ flink_jobs:
         activitytable = "{{ .Values.middleware_cassandra_user_activity_agg_table }}"
       }
       redis {
+        host = "{{ .Values.global.redis.host }}"
+        port = "{{ .Values.global.redis.port }}"
         database {
           relationCache.id = 10
           contentCache.id = 5
         }
       }
+      redis-meta {
+        host = "{{ .Values.metadata2_redis_host | default .Values.global.redis.host }}"
+        port = 6379
+        }
+      redisdb.connection.timeout = 30000
       assessment.skip.missingRecords = true
       content.read.api = "{{ .Values.content_read_api_host }}/{{ .Values.content_read_api_endpoint }}"
-      user.activity.agg.type="attempt_metrics"
+      user.activity.agg.type = "attempt_metrics"
     flink-conf: |+
       jobmanager.memory.flink.size: 1024m
       taskmanager.memory.flink.size: 1024m
@@ -807,25 +898,40 @@ flink_jobs:
   notification-job:
     enabled: true
     config: |+
-      include file("/data/flink/conf/base-config.conf")
+      include file("file:///data/flink/conf/base-config.conf")
       kafka {
         input.topic = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_topic_lms_notification "context" $) }}"
         groupId = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_group_lms_notification "context" $) }}"
+        broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+        zookeeper = "{{ .Values.global.zookeeper.host }}:{{ .Values.global.zookeeper.port }}"
       }
       task {
         restart-strategy.attempts = "{{ .Values.restart_attempts }}" # max 3 restart attempts
         restart-strategy.delay = 240000 # in milli-seconds # on max restarts (3) within 4 min the job will fail.
         consumer.parallelism = "{{ .Values.notification_job_consumer_parallelism }}"
         parallelism = "{{ .Values.notification_job_parallelism }}"
+        checkpointing.interval = "{{ .Values.activity_agg_checkpointing_interval }}"
+        checkpointing.pause.between.seconds = "{{ .Values.activity_agg_checkpointing_pause_interval }}"
+        checkpointing.compressed = true
       }
-      fcm_account_key= "{{ .Values.core_vault_sunbird_fcm_account_key }}"
-      sms_auth_key= "{{ .Values.global.sunbird_msg_91_auth }}"
-      mail_server_from_email= "{{ .Values.global.mail_server_from_email }}"
-      sms_default_sender= "{{ .Values.notification_msg_default_sender }}"
-      mail_server_username= "{{ .Values.global.mail_server_username }}"
-      mail_server_password= "{{ .Values.global.mail_server_password }}"
-      mail_server_host= "{{ .Values.mail_server_host }}"
-      mail_server_port= "{{ .Values.mail_server_port }}"
+      lms-cassandra {
+        host = "{{ .Values.global.cassandra.host }}"
+        port = "{{ .Values.global.cassandra.port }}"
+        isMultiDCEnabled = "{{ .Values.cassandra_isMultiDCEnabled }}"
+        keyspace = "{{ .Values.middleware_cassandra_courses_keyspace }}"
+        table = "{{ .Values.middleware_cassandra_assessment_aggregator_table }}"
+        questionudttype= "{{ .Values.middleware_cassandra_assessment_question_type }}"
+        enrolmentstable = "{{ .Values.middleware_cassandra_user_enrolments_table }}"
+        activitytable = "{{ .Values.middleware_cassandra_user_activity_agg_table }}"
+      }
+      fcm_account_key="{{ .Values.core_vault_sunbird_fcm_account_key }}"
+      sms_auth_key="{{ .Values.global.sunbird_msg_91_auth }}"
+      mail_server_from_email="{{ .Values.global.mail_server_from_email }}"
+      sms_default_sender="{{ .Values.notification_msg_default_sender }}"
+      mail_server_username="{{ .Values.global.mail_server_username }}"
+      mail_server_password="{{ .Values.global.mail_server_password }}"
+      mail_server_host="{{ .Values.mail_server_host }}"
+      mail_server_port="{{ .Values.mail_server_port }}"
     flink-conf: |+
       jobmanager.memory.flink.size: 1024m
       taskmanager.memory.flink.size: 1024m
@@ -838,23 +944,59 @@ flink_jobs:
   program-user-info:
     enabled: true
     config: |+
-      include file("/data/flink/conf/base-config.conf")
+      include file("file:///data/flink/conf/base-config.conf")
       kafka {
         producer.broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
         consumer.broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
         zookeeper = "{{ .Values.global.zookeeper.host }}:{{ .Values.global.zookeeper.port }}"
         input.topic = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_topic_programuser_info "context" $) }}"
         groupId = "{{ include "common.tplvalues.render" (dict "value" .Values.kafka_group_programuser_info "context" $) }}"
+        producer {
+          max-request-size = 1572864
+          batch.size = 98304
+          linger.ms = 10
+        }
       }
       task {
         consumer.parallelism = "{{ .Values.programuserinfo_consumer_parallelism }}"
         downstream.parallelism = "{{ .Values.programuserinfo_downstream_parallelism }}"
+        parallelism = "{{ .Values.programuserinfo_programuser_parallelism }}"
+        restart-strategy.attempts = "{{ .Values.restart_attempts }}" # max 3 restart attempts
+        restart-strategy.delay = 240000 # in milli-seconds # on max restarts (3) within 4 min the job will fail.
+        checkpointing.interval = "{{ .Values.activity_agg_checkpointing_interval }}"
+        checkpointing.pause.between.seconds = "{{ .Values.activity_agg_checkpointing_pause_interval }}"
+        checkpointing.compressed = true
         programuser {
           parallelism = "{{ .Values.programuserinfo_programuser_parallelism }}"
         }
-
+      }
+      lms-cassandra {
+        host = "{{ .Values.global.cassandra.host }}"
+        port = "{{ .Values.global.cassandra.port }}"
+        isMultiDCEnabled = "{{ .Values.cassandra_isMultiDCEnabled }}"
+        keyspace = "{{ .Values.middleware_cassandra_courses_keyspace }}"
+        table = "{{ .Values.middleware_cassandra_assessment_aggregator_table }}"
+        questionudttype= "{{ .Values.middleware_cassandra_assessment_question_type }}"
+        enrolmentstable = "{{ .Values.middleware_cassandra_user_enrolments_table }}"
+        activitytable = "{{ .Values.middleware_cassandra_user_activity_agg_table }}"
+      }
+      redis {
+        host = "{{ .Values.global.redis.host }}"
+        port = "{{ .Values.global.redis.port }}"
+        database {
+          relationCache.id = 10
+          contentCache.id = 5
+        }
+      }
+      redisdb.connection.timeout = 30000
+      redis-meta {
+        host = "{{ .Values.metadata2_redis_host | default .Values.global.redis.host }}"
+        port = 6379
       }
       ml-cassandra {
+        host = "{{ .Values.global.cassandra.host }}"
+        port = "{{ .Values.global.cassandra.port }}"
+        isMultiDCEnabled = "{{ .Values.cassandra_isMultiDCEnabled }}"
         keyspace = "{{ .Values.middleware_cassandra_programuserinfo_keyspace }}"
         table = "{{ .Values.middleware_cassandra_programuserinfo_table }}"
       }
@@ -870,15 +1012,38 @@ flink_jobs:
   user-deletion-cleanup:
     enabled: true
     config: |+
-      include file("/data/flink/conf/base-config.conf")
+      include file("file:///data/flink/conf/base-config.conf")
       kafka {
+        producer.broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+        consumer.broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
         input.topic = "{{ .Values.global.env }}.delete.user"
         groupId = "{{ .Values.global.env }}-delete-user-group"
+        producer {
+          max-request-size = 1572864
+          batch.size = 98304
+          linger.ms = 10
+        }
       }
       task {
         user.deletion.cleanup.parallelism = "{{ .Values.user_deletion_cleanup_job_parallelism }}"
+        restart-strategy.attempts = "{{ .Values.restart_attempts }}" # max 3 restart attempts
+        restart-strategy.delay = 240000 # in milli-seconds # on max restarts (3) within 4 min the job will fail.
+        checkpointing.interval = "{{ .Values.activity_agg_checkpointing_interval }}"
+        checkpointing.pause.between.seconds = "{{ .Values.activity_agg_checkpointing_pause_interval }}"
+        checkpointing.compressed = true
+        parallelism = "{{ .Values.user_deletion_cleanup_job_parallelism }}"
+        consumer.parallelism = "{{ .Values.user_cache_updater_job_consumer_parallelism }}"
       }
-  
+      lms-cassandra {
+        host = "{{ .Values.global.cassandra.host }}"
+        port = "{{ .Values.global.cassandra.port }}"
+        isMultiDCEnabled = "{{ .Values.cassandra_isMultiDCEnabled }}"
+        keyspace = "{{ .Values.middleware_cassandra_courses_keyspace }}"
+        table = "{{ .Values.middleware_cassandra_assessment_aggregator_table }}"
+        questionudttype= "{{ .Values.middleware_cassandra_assessment_question_type }}"
+        enrolmentstable = "{{ .Values.middleware_cassandra_user_enrolments_table }}"
+        activitytable = "{{ .Values.middleware_cassandra_user_activity_agg_table }}"
+      }  
       service {
           lms {
               basePath = "{{ .Values.lms_service_base_url }}"
@@ -887,7 +1052,22 @@ flink_jobs:
               basePath = "{{ .Values.userorg_service_base_url }}"
           }
       }
-  
+      redis {
+        host = "{{ .Values.global.redis.host }}"
+        port = "{{ .Values.global.redis.port }}"
+        database {
+          relationCache.id = 10
+          contentCache.id = 5
+        }
+      }
+      redisdb.connection.timeout = 30000
+      redis-meta {
+        host = "{{ .Values.metadata2_redis_host | default .Values.global.redis.host }}"
+        port = 6379
+      }
+      es {
+        basePath = "{{.Values.global.elasticsearch.host}}:{{.Values.global.elasticsearch.port}}"
+      }
       sunbird_keycloak_user_federation_provider_id="{{ .Values.core_vault_sunbird_keycloak_user_federation_provider_id }}"
       user_read_api = "/user/v5/read/"
       batch_search_api = "/course/v1/batch/list"

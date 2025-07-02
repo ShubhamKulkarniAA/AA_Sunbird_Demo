@@ -25,8 +25,8 @@ inputs = {
   eks_cluster_name           = "demo-sunbirdedAA-eks"
   cluster_role_name          = "sunbirdedAA-demo-EKSClusterRole"
   node_role_name             = "sunbirdedAA-demo-EKSNodeRole"
-  instance_type              = "c6a.8xlarge"
-  disk_size                  = 1024 # Increase to 500GiB or more
+  instance_type              = "t2.large"  # Previous c6a.8xlarge
+  disk_size                  = 1024 # Disk size in GB
   desired_size               = 1
   max_size                   = 1
   min_size                   = 1
@@ -43,3 +43,4 @@ inputs = {
   aws_s3_private_bucket_name = "sunbirdedaa-demo-private-bucket"
   aws_s3_dial_state_bucket_name = "sunbirdedaa-demo-dialstate-bucket"
 }
+

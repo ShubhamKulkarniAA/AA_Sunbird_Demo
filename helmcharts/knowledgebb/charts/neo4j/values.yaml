@@ -16,7 +16,12 @@ commonAnnotations:
 
 commonLabels: {}
 
-livenessProbe: {}
+livenessProbe:
+  exec:
+    command: ["/bin/sh", "-c", "! test -f /var/lib/neo4j/data/databases/graph.db/store_lock"]
+  initialDelaySeconds: 30
+  periodSeconds: 60
+
 readinessProbe: {}
 
 
@@ -84,7 +89,7 @@ neo4j:
     sharedData: /var/lib/neo4j/logs/plugins/txn-handler
     neo4jData: "/data"
   pvc:
-    claimName: neo4j-claim
+    claimName: neo4j-kbb-claim
     accessModes: ReadWriteOnce
     annotations: "keep"
     resources:
@@ -96,8 +101,10 @@ logstash:
   name: logstash
   image: logstash:6.8.21
   imagePullPolicy: Always
+  pipeline_workers: 1
+  pipeline_bacth_size: 1
   configmap:
-    name: logstash-config
+    name: logstash-config-kbb
   mountPath:
     name: logstash.conf
     sharedData: /txn-handler

@@ -1,4 +1,4 @@
-{{- $currentScope := .}}
+{{- $currentScope := . }}
 {{- range $jobName, $jobData := .Values.secor_jobs }}
 {{- if $jobData.enabled }}
 {{- with $currentScope }}
@@ -11,6 +11,7 @@ metadata:
   name: {{ $jobName }}
   labels:
     app: secor
+    release: {{ $jobName }}
 spec:
   serviceName: secor
   updateStrategy:
@@ -26,44 +27,45 @@ spec:
         app: secor
         release: {{ $jobName }}
     spec:
+      {{- if and .Values.serviceAccount .Values.serviceAccount.create }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      {{- end }}
       {{- with .Values.image.pullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       initContainers:
-      - name: change-pv-dir-ownership
-        image: alpine:3
-        command: ["/bin/sh", "-c"]
-        args: ["chown -R 9999:9999 /mnt/data"]
-        volumeMounts:
-        - name: data-path
-          mountPath: /mnt/data
+        - name: change-pv-dir-ownership
+          image: alpine:3
+          command: ["/bin/sh", "-c"]
+          args: ["chown -R 9999:9999 /mnt/data"]
+          volumeMounts:
+            - name: data-path
+              mountPath: /mnt/data
       containers:
         - name: {{ $jobName }}-secor
           image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
-            - name: "CONFIG_FILE"
+            - name: CONFIG_FILE
               value: "/opt/secor/config/secor.partition.properties"
-            - name: "LOG4J_CONFIGURATION"
+            - name: LOG4J_CONFIGURATION
               value: "/opt/secor/config/log4j.docker.properties"
-
           volumeMounts:
-           - mountPath: /opt/secor/config
-             name: secor-config
-           - name: "data-path"
-             mountPath: /mnt/data
+            - mountPath: /opt/secor/config
+              name: secor-config
+            - name: data-path
+              mountPath: /mnt/data
           resources:
             requests:
-              cpu: {{ get (get (get $.Values.secor_jobs $jobName) "requests") "cpu" }}
-              memory: {{ get (get (get $.Values.secor_jobs $jobName) "requests") "memory"}}
+              cpu: {{ get $jobData.requests "cpu" }}
+              memory: {{ get $jobData.requests "memory" }}
           securityContext:
             runAsUser: 9999
-
       volumes:
-        - configMap:
+        - name: secor-config
+          configMap:
             name: {{ $jobName }}-config
-          name: secor-config
 
   volumeClaimTemplates:
     - metadata:
@@ -71,12 +73,13 @@ spec:
         labels:
           app: secor
       spec:
-        storageClassName: "{{ .Values.storageClass }}"
+        storageClassName: {{ $jobData.storage.storageClass | default $.Values.global.storage_class | quote }}
         accessModes:
           - ReadWriteOnce
         resources:
           requests:
-            storage: {{ $jobData.storage.size }}
+            storage: {{ get $jobData.storage "size" }}
 {{- end }}
 {{- end }}
 {{- end }}
+

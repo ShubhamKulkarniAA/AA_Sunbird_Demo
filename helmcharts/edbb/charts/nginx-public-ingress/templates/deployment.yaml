@@ -52,24 +52,26 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           volumeMounts:
           {{- if .Values.configmap.enabled }}
-          - name: config
-            mountPath: /etc/secrets/tls.key
-            subPath: tls.key
-          - name: config
-            mountPath: /etc/secrets/tls.crt
-            subPath: tls.crt
-          - name: config
-            mountPath: /etc/nginx/defaults.d/proxy-default.conf
-            subPath: proxy-default.conf
-          - name: config
-            mountPath: /etc/nginx/nginx.conf
-            subPath: nginx.conf
-          - name: config
-            mountPath: /etc/nginx/defaults.d/compression.conf
-            subPath: compression.conf
-          - name: config
-            mountPath: /var/www/html/apple-app-site-association.json
-            subPath: apple-app-site-association.json
+          #{{- if and .Values.proxy_certificate .Values.proxy_private_key }}
+            #- name: config
+              #mountPath: /etc/secrets/tls.key
+                #subPath: tls.key
+                #- name: config
+                #mountPath: /etc/secrets/tls.crt
+                #subPath: tls.crt
+                #{{- end }}
+            #- name: config
+            # mountPath: /etc/nginx/defaults.d/proxy-default.conf
+            # subPath: proxy-default.conf
+            - name: config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+            - name: config
+              mountPath: /etc/nginx/defaults.d/compression.conf
+              subPath: compression.conf
+            - name: config
+              mountPath: /var/www/html/apple-app-site-association.json
+              subPath: apple-app-site-association.json
           {{- end }}
         {{- with .Values.sidecars }}
         {{- toYaml . | nindent 8 }}

@@ -20,5 +20,11 @@ dependencies:
 - name: druid-operator
   repository: ""
   version: 0.1.1
-digest: sha256:7482f8b9b83a81ac821c878713a95bcd05a42f92401787b27af45f3b203138c7
-generated: "2024-01-12T11:40:04.779084178+01:00"
+- name: postgresql
+  repository: ""
+  version: 10.16.3
+- name: neo4j
+  repository: ""
+  version: 0.1.0
+digest: sha256:194b961be8faf3ada0e9209846813428a546313fa467c53f1514cfdafec2aa07
+generated: "2025-06-17T15:41:42.542759894Z"

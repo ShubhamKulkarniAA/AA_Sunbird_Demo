@@ -1,10 +1,10 @@
----
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: {{ include "common.names.fullname" . }}
   annotations:
     {{- .Values.provisioningAnnotations | toYaml | nindent 4 }}
+    helm.sh/job-revision: {{ now | unixEpoch | quote }}
 spec:
   template:
     spec:
@@ -14,26 +14,32 @@ spec:
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         command: ["/bin/sh", "-c"]
         args:
-        - "timeout 300 sh -c 'until nc -z kong 8000; do echo waiting for kong; sleep 10; done'"
+          - "timeout 300 sh -c 'until nc -z kong 8000; do echo waiting for kong; sleep 10; done'"
       containers:
-        - name: {{ .Chart.Name }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command:
-          - /bin/sh
-          - -c
-          args:
-            - python /kong_yaml_to_json.py && python /kong_consumers.py /tmp/kong-consumers.json --kong-admin-api-url=http://{{    .Values.kong_admin_url }}:{{ .Values.kong_admin_port }}
-          volumeMounts:
-          {{- if .Values.configmap.enabled }}
-          - name: config
-            mountPath: {{ .Values.configmap.mountPath }}
-          {{- end }}
+      - name: {{ .Chart.Name }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command:
+        - /bin/sh
+        - -c
+        args:
+          - python /kong_yaml_to_json.py && python /kong_consumers.py /tmp/kong-consumers.json --kong-admin-api-url=http://{{ .Values.kong_admin_url }}:{{ .Values.kong_admin_port }}
+        volumeMounts:
+        {{- if .Values.configmap.enabled }}
+        - name: config
+          mountPath: {{ .Values.configmap.mountPath }}
+        {{- end }}
+        - name: consumers
+          mountPath: /tmp
       volumes:
       {{- if .Values.configmap.enabled }}
       - name: config
         configMap:
           name: {{ include "common.names.fullname" . }}
       {{- end }}
+      - name: consumers
+        configMap:
+          name: {{ include "common.names.fullname" . }}-consumers
       restartPolicy: Never
   backoffLimit: 30
+

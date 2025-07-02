@@ -23,10 +23,10 @@ inputs = {
   subnet_ids        = dependency.network.outputs.public_subnet_ids
   cluster_role_name = local.cluster_role_name
   node_role_name    = local.node_role_name
-  instance_type     = "c6a.8xlarge"
+  instance_type     = "t2.large"	# Previous c6a.8xlarge
   disk_size         = 1024 # Increase to 500GiB or more
-  desired_size      = 3
-  max_size          = 3
-  min_size          = 3
+  desired_size      = 1
+  max_size          = 1
+  min_size          = 1
 }
 

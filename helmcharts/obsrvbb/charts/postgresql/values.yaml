@@ -504,6 +504,7 @@ persistence:
   ##   GKE, AWS & OpenStack)
   ##
   storageClass: ""
+  storageClassName: "{{ .Values.global.storage_class }}"  
   ## @param persistence.accessModes PVC Access Mode for PostgreSQL volume
   ##
   accessModes:

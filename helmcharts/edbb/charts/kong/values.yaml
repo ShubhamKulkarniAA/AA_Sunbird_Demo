@@ -6,7 +6,7 @@ replicaCount: 1
 image:
   repository: sunbirded.azurecr.io/kong
   tag: "0.14.1"
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
   pullSecrets: []
 
 podAnnotations: {}
@@ -152,4 +152,4 @@ global:
 
 provisioningAnnotations:
   "helm.sh/hook-weight": "-4"
-  # "helm.sh/hook": post-install,post-upgrade
+  "helm.sh/hook": post-install,post-upgrade

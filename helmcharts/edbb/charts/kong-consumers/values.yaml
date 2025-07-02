@@ -4,7 +4,7 @@ fullnameOverride: ""
 image:
   repository: sunbirded.azurecr.io/kong-scripts
   tag: "0.1.8"
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
   pullSecrets: []
 
 kong_admin_url: kong
@@ -333,6 +333,36 @@ configmap:
 
 global:
   random_string: randomstring123
+
+additional_consumers:
+  - username: portal_anonymous
+    groups:
+      - anonymousCourseAccess
+      - anonymousOrgAccess
+      - locationAccess
+      - anonymousAppAccess
+      - anonymousUserAccess
+      - deviceCreate
+      - anonymousContentAccess
+      - anonymousCertificateAccess
+      - anonymousUserCreate
+      - telemetryCreate
+    state: present
+    credential_iss: portal_anonymous_key1
+    credential_rsa_public_key: |
+      -----BEGIN PUBLIC KEY-----
+      MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtsYTZf6LONHPQnwpUzyY
+      nB5sF5zIYJJ2eSvaCl6ByPNqsrKm/EIkpg3en1+LerB1EgRytofiVwqWJmG5aUqI
+      AZ3CCiIaYG5LeJx/RNIJCmiFyC/tO9IRbTCCPfWvNOqtBixVUrq7jGi4FXNSbARN
+      gx90ClggYeKiH6pdQmjuSUeJfFrswojk1+KPQBz2txcf5v0xuaJ9hT1a9hcCYzyf
+      7APrASg+F6qq7WrHfzW9jCCACwE7NDBKyiwmSjkTSXddaQnGKncy7YpjwsYmK3lj
+      bqzWephiXoMQpmONb3xST+OuoyO80hzeZeZHHRloB7R0e4vF/CfuSsV0VsgUKmJI
+      OwIDAQAB
+      -----END PUBLIC KEY-----
+    credential_algorithm: RS256
+    print_credentials: true
+
+
 
 # You can add new consumers using this block
 # additional_consumers:

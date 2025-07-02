@@ -1,5 +1,5 @@
-nameOverride: "druid-raw-cluster"
-fullnameOverride: "druid-raw-cluster"
+nameOverride: "druid-obb"
+fullnameOverride: "druid-obb"
 
 replicaCount:
   druid_coordinator: 1
@@ -76,7 +76,7 @@ securityContext:
         runAsGroup: 0
 
 env: "dev"
-druid_cluster_type: "raw"
+druid_cluster_type: "obb-raw"
 druid_image: "apache/druid:25.0.0"
 druid_namespace: ""
 druid_monitoring: True
@@ -315,7 +315,7 @@ serviceAccount:
     serviceAccountName: ""
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
-  name: obsrv-sa
+  name: obsrvbb
 
 commonAnnotations:
   reloader.stakater.com/auto: "true"

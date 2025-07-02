@@ -48,7 +48,6 @@ resources:
     cpu: 1
     memory: 2048Mi
 
-
 autoscaling:
   enabled: false
   minReplicas: 1
@@ -67,7 +66,6 @@ autoscaling:
           type: Utilization
           averageUtilization: 80
 
-
 nodeSelector: {}
 tolerations: []
 affinity: {}
@@ -78,7 +76,7 @@ configmap:
 
 serviceAccount:
   create: true
-  name: ""
+  name: "obsrvbb"
 
 serviceMonitor:
   enabled: false
@@ -103,7 +101,6 @@ sidecars: {}
 opa:
   enabled: false
 
-
 jobmanager:
   rpc_port: 6123
   blob_port: 6124
@@ -121,7 +118,6 @@ taskmanager:
   heap_memory: 1024
   replicas: 1
   cpu_requests: 0.3
-
 
 # AWS S3 Details
 s3_access_key: ""
@@ -217,6 +213,7 @@ device_profile_table: "_device_profile"
 ### content-cache-updater
 # dialcode_api_url: {{ .Values.global.proto }}://{{ .Values.global.domain_name }}/{{ .Values.dialcode_endpoint }}
 dialcode_api_auth_key: ""
+dialcode_endpoint: "dialcode/v3/list"
 
 #(user read api details)
 user_read_api_endpoint: "/private/user/v1/read/"
@@ -229,14 +226,17 @@ middleware_cassandra_keyspace: sunbird
 middleware_cassandra_user_table: user
 middleware_cassandra_location_table: location
 
+# Redis metadata hosts (add missing variables)
+metadata_redis_host: ""
+metadata_redis_port: 6379
+metadata2_redis_host: ""
+metadata2_redis_port: 6379
+
 postgres:
   max_connections: 2
   sslmode: false
   db_name: analytics
   db_port: 5432
-
-
-
 
 log4j_console_properties: |
   # This affects logging for both user code and Flink
@@ -282,30 +282,34 @@ base_config: |
         }
       }
     job {
-      env = "{{ .Values.global.env }}"
-      enable.distributed.checkpointing = true
+    env = "{{ .Values.global.env }}"
+    enable.distributed.checkpointing = true
 
-      {{- if eq "oci" .Values.global.checkpoint_store_type }}
-      statebackend {
-        base.url = "s3://{{ .Values.global.public_container_name }}/checkpoint"
-      }
-
-      {{- else if eq "azure" .Values.global.checkpoint_store_type }}
-      statebackend {
-        base.url = "wasbs://{{ .Values.global.public_container_name }}@{{ .Values.global.object_storage_endpoint }}/checkpoint"
-      }
-
-      {{- else if eq "gcs" .Values.global.checkpoint_store_type }}
-      statebackend {
-        base.url = "gs://{{ .Values.global.public_container_name }}/checkpoint"
-      }
-      {{- else }}
-      # No valid checkpoint_store_type configured, skipping statebackend.
-      {{- end }}
+    {{- if eq "oci" .Values.global.checkpoint_store_type }}
+    statebackend {
+      base.url = "s3://{{ .Values.global.public_container_name }}/checkpoint"
     }
-    
-    
-      task {
+    {{- else if eq "azure" .Values.global.checkpoint_store_type }}
+    statebackend {
+      base.url = "wasbs://{{ .Values.global.public_container_name }}@{{ .Values.global.object_storage_endpoint }}/checkpoint"
+    }
+    {{- else if eq "gcs" .Values.global.checkpoint_store_type }}
+    statebackend {
+      base.url = "gs://{{ .Values.global.public_container_name }}/checkpoint"
+    }
+    {{- else }}
+    statebackend {
+      base.url = "file:///tmp/flink-checkpoints"
+    }
+    {{- end }}
+
+    checkpointing.interval = {{ .Values.checkpoint_interval }}
+    checkpointing.pause.between.seconds = {{ .Values.checkpoint_pause_between_seconds }}
+    checkpointing.compression.enabled = {{ .Values.checkpoint_compression_enabled }}
+    restart-strategy.attempts = {{ .Values.restart_attempts }}
+    restart-strategy.delay = {{ .Values.restart_delay }}
+    } 
+    task {
         parallelism = 1
         consumer.parallelism = 1
         checkpointing.compressed = true
@@ -318,10 +322,16 @@ base_config: |
       redis {
         host = "{{ .Values.global.redis.host }}"
         port = {{ .Values.global.redis.port }}
+        database {
+          default.id = 0
+        }
       }
       redis-meta {
         host = "{{ .Values.metadata2_redis_host | default .Values.global.redis.host }}"
-        port = 6379
+        port = {{ .Values.metadata2_redis_port | default .Values.global.redis.port }}
+        database {
+          default.id = 0
+        }
       }
       postgres {
         host = "{{ .Values.global.postgresql.host }}"
@@ -330,10 +340,12 @@ base_config: |
         sslMode = "{{ .Values.postgres.sslmode }}"
         user = "{{ .Values.global.postgresql.postgresqlUsername }}"
         password = "{{ .Values.global.postgresql.postgresqlPassword }}"
+        database = "{{ .Values.postgres.db_name }}"
       }
       lms-cassandra {
         host = "{{ .Values.global.cassandra.host }}"
         port = "{{ .Values.global.cassandra.port }}"
+        keyspace = "{{ .Values.middleware_cassandra_keyspace }}"
       }
       schema {
         basePath = "https://{{ .Values.global.object_storage_endpoint }}/contents/schemas/local"
@@ -342,14 +354,32 @@ base_config: |
         }
       }
 
-flink_jobs:
-  ingest-router:
-    enabled: true
-    config: |+
-      include file("/data/flink/conf/base-config.conf")
+
+base_config: |
+  kafka {
+    broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+    producer.broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+    consumer.broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+    zookeeper = "{{ .Values.global.zookeeper.host }}:{{ .Values.global.zookeeper.port }}"
+    producer {                                                                                                                                                                                                        max-request-size = 1572864                                                                                                                                                                                      batch.size = 98304                                                                                                                                                                                              linger.ms = 10                                                                                                                                                                                                }
+  }                                                                                                                                                                                                                                                                                                                                                                                                                               job {                                                                                                                                                                                                             env = "{{ .Values.global.env }}"                                                                                                                                                                                enable.distributed.checkpointing = true                                                                                                                                                                                                                                                                                                                                                                                         statebackend {
+      type = "filesystem"
+      config {
+        checkpoint.path = "{{- if eq .Values.global.checkpoint_store_type "oci" -}}s3://{{ .Values.global.public_container_name }}/checkpoint{{- else if eq .Values.global.checkpoint_store_type "azure" -}}wasbs://{{ .Values.global.public_container_name }}@{{ .Values.global.object_storage_endpoint }}/checkpoint{{- else if eq .Values.global.checkpoint_store_type "gcs" -}}gs://{{ .Values.global.public_container_name }}/checkpoint{{- else -}}file:///tmp/flink-checkpoints{{- end }}"
+      }
+    }
+
+    checkpointing.interval = {{ .Values.checkpoint_interval }}
+    checkpointing.pause.between.seconds = {{ .Values.checkpoint_pause_between_seconds }}
+    checkpointing.compression.enabled = {{ .Values.checkpoint_compression_enabled }}
+    restart-strategy.attempts = {{ .Values.restart_attempts }}
+    restart-strategy.delay = {{ .Values.restart_delay }}
+  }
       kafka {
+        broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
         producer.broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
         consumer.broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+        zookeeper = "{{ .Values.global.zookeeper.host }}:{{ .Values.global.zookeeper.port }}"
         ingest {
           input.topic = {{ .Values.global.env }}.telemetry.ingestion
           output.success.topic = {{ .Values.global.env }}.telemetry.ingest
@@ -361,35 +391,189 @@ flink_jobs:
         groupId = {{ .Values.global.env }}-ingest-router-group
         producer {
           max-request-size = {{ .Values.extractor_max_request_size }}
+          batch.size = 98304
+          linger.ms = 10
         }
       }
       task {
+        parallelism = 1
         consumer.parallelism = {{ .Values.ingest_router_consumer_parallelism }}
         downstream.operators.parallelism = {{ .Values.ingest_router_operators_parallelism }}
+        checkpointing.compressed = true
+        checkpointing.interval = 60000
+        checkpointing.pause.between.seconds = 5000
+        restart-strategy.attempts = 3
+        restart-strategy.delay = 30000
         raw {
         consumer.parallelism = {{ .Values.raw_router_consumer_parallelism }}
         downstream.operators.parallelism = {{ .Values.raw_router_downstream_parallelism }}
         }
       }
-    flink-conf: |+
-      jobmanager.memory.flink.size: 1024m
-      taskmanager.memory.flink.size: 1024m
-      taskmanager.numberOfTaskSlots: 1
-      parallelism.default: 1
-      jobmanager.execution.failover-strategy: region
-      taskmanager.memory.network.fraction: 0.1
-      scheduler-mode: reactive
-      heartbeat.timeout: 8000
-      heartbeat.interval: 5000
-      taskmanager.memory.process.size: 1700m
-      jobmanager.memory.process.size: 1600m
-    job_classname: org.sunbird.dp.ingestrouter.task.IngestRouterStreamTask
+      redisdb.connection.timeout = 30000
+      redis {
+        host = "{{ .Values.global.redis.host }}"
+        port = {{ .Values.global.redis.port }}
+        database {
+          default.id = 0
+        }
+      }
+      redis-meta {
+        host = "{{ .Values.metadata2_redis_host | default .Values.global.redis.host }}"
+        port = {{ .Values.metadata2_redis_port | default .Values.global.redis.port }}
+        database {
+          default.id = 0
+        }
+      }
+      postgres {
+        host = "{{ .Values.global.postgresql.host }}"
+        port = "{{ .Values.global.postgresql.port }}"
+        maxConnections = "{{ .Values.postgres.max_connections }}"
+        sslMode = "{{ .Values.postgres.sslmode }}"
+        user = "{{ .Values.global.postgresql.postgresqlUsername }}"
+        password = "{{ .Values.global.postgresql.postgresqlPassword }}"
+        database = "{{ .Values.postgres.db_name }}"
+      }
+      lms-cassandra {
+        host = "{{ .Values.global.cassandra.host }}"
+        port = "{{ .Values.global.cassandra.port }}"
+        keyspace = "{{ .Values.middleware_cassandra_keyspace }}"
+      }
+      schema {
+        basePath = "https://{{ .Values.global.object_storage_endpoint }}/contents/schemas/local"
+        supportedVersion = {
+          itemset = "2.0"
+        }
+      }
+  flink_jobs:
+  ingest-router:
+    enabled: true
+    config: |+
+      include file("/data/flink/conf/base-config.conf")
+      job {
+        env = "{{ .Values.global.env }}"
+        enable.distributed.checkpointing = true
 
+        statebackend {
+          type = "filesystem"
+          config {
+            checkpoint.path = "{{- if eq .Values.global.checkpoint_store_type "oci" -}}s3://{{ .Values.global.public_container_name }}/checkpoint{{- else if eq .Values.global.checkpoint_store_type "azure" -}}wasbs://{{ .Values.global.public_container_name }}@{{ .Values.global.object_storage_endpoint }}/checkpoint{{- else if eq .Values.global.checkpoint_store_type "gcs" -}}gs://{{ .Values.global.public_container_name }}/checkpoint{{- else -}}file:///tmp/flink-checkpoints{{- end }}"
+          }
+        }
+
+        checkpointing.interval = {{ .Values.checkpoint_interval }}
+        checkpointing.pause.between.seconds = {{ .Values.checkpoint_pause_between_seconds }}
+        checkpointing.compression.enabled = {{ .Values.checkpoint_compression_enabled }}
+        restart-strategy.attempts = {{ .Values.restart_attempts }}
+        restart-strategy.delay = {{ .Values.restart_delay }}
+      }
+
+      kafka {
+        broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+        producer.broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+        consumer.broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+        zookeeper = "{{ .Values.global.zookeeper.host }}:{{ .Values.global.zookeeper.port }}"
+
+        ingest {
+          input.topic = {{ .Values.global.env }}.telemetry.ingestion
+          output.success.topic = {{ .Values.global.env }}.telemetry.ingest
+        }
+         raw {
+          input.topic = "{{ .Values.global.env }}.telemetry.raw"
+          output.success.topic = "{{ .Values.global.env }}.telemetry.raw"
+        }
+        groupId = {{ .Values.global.env }}-ingest-router-group
+        producer {
+          max-request-size = {{ .Values.extractor_max_request_size }}
+          batch.size = 98304
+          linger.ms = 10
+        }
+      }
+      task {
+        parallelism = 1
+        consumer.parallelism = {{ .Values.ingest_router_consumer_parallelism }}
+        downstream.operators.parallelism = {{ .Values.ingest_router_operators_parallelism }}
+        checkpointing.compressed = true
+        checkpointing.interval = 60000
+        checkpointing.pause.between.seconds = 5000
+        restart-strategy.attempts = 3
+        restart-strategy.delay = 30000
+        raw {
+        consumer.parallelism = {{ .Values.raw_router_consumer_parallelism }}
+        downstream.operators.parallelism = {{ .Values.raw_router_downstream_parallelism }}
+        }
+      }
+      redisdb.connection.timeout = 30000
+      redis {
+        host = "{{ .Values.global.redis.host }}"
+        port = {{ .Values.global.redis.port }}
+        database {
+          default.id = 0
+        }
+      }
+      redis-meta {
+        host = "{{ .Values.metadata2_redis_host | default .Values.global.redis.host }}"
+        port = {{ .Values.metadata2_redis_port | default .Values.global.redis.port }}
+        database {
+          default.id = 0
+        }
+      }
+      postgres {
+        host = "{{ .Values.global.postgresql.host }}"
+        port = "{{ .Values.global.postgresql.port }}"
+        maxConnections = "{{ .Values.postgres.max_connections }}"
+        sslMode = "{{ .Values.postgres.sslmode }}"
+        user = "{{ .Values.global.postgresql.postgresqlUsername }}"
+        password = "{{ .Values.global.postgresql.postgresqlPassword }}"
+        database = "{{ .Values.postgres.db_name }}"
+      }
+      lms-cassandra {
+        host = "{{ .Values.global.cassandra.host }}"
+        port = "{{ .Values.global.cassandra.port }}"
+        keyspace = "{{ .Values.middleware_cassandra_keyspace }}"
+      }
+      schema {
+        basePath = "https://{{ .Values.global.object_storage_endpoint }}/contents/schemas/local"
+        supportedVersion = {
+          itemset = "2.0"
+        }
+      }
   telemetry-extractor:
     enabled: true
     config: |+
       include file("/data/flink/conf/base-config.conf")
+      job {
+        env = "{{ .Values.global.env }}"
+        enable.distributed.checkpointing = true
+
+        {{- if eq "oci" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "s3://{{ .Values.global.public_container_name }}/checkpoint"
+        }
+        {{- else if eq "azure" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "wasbs://{{ .Values.global.public_container_name }}@{{ .Values.global.object_storage_endpoint }}/checkpoint"
+        }
+        {{- else if eq "gcs" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "gs://{{ .Values.global.public_container_name }}/checkpoint"
+        }
+        {{- else }}
+        statebackend {
+          base.url = "file:///tmp/flink-checkpoints"
+        }
+        {{- end }}
+
+        checkpointing.interval = {{ .Values.checkpoint_interval }}
+        checkpointing.pause.between.seconds = {{ .Values.checkpoint_pause_between_seconds }}
+        checkpointing.compression.enabled = {{ .Values.checkpoint_compression_enabled }}
+        restart-strategy.attempts = {{ .Values.restart_attempts }}
+        restart-strategy.delay = {{ .Values.restart_delay }}
+       }
       kafka {
+        broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+        producer.broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+        consumer.broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+        zookeeper = "{{ .Values.global.zookeeper.host }}:{{ .Values.global.zookeeper.port }}"
         input.topic = {{ .Values.global.env }}.telemetry.ingest
         output.success.topic = {{ .Values.global.env }}.telemetry.raw
         output.log.route.topic = {{ .Values.global.env }}.druid.events.log
@@ -401,26 +585,58 @@ flink_jobs:
         groupId = {{ .Values.global.env }}-telemetry-extractor-group
         producer {
           max-request-size = {{ .Values.extractor_max_request_size }}
+          batch.size = 98304
+          linger.ms = 10
         }
       }
       task {
+        parallelism = 1
         consumer.parallelism = {{ .Values.extractor_consumer_parallelism }}
         downstream.operators.parallelism = {{ .Values.extractor_operators_parallelism }}
+        checkpointing.compressed = true
+        checkpointing.interval = 60000
+        checkpointing.pause.between.seconds = 5000
+        restart-strategy.attempts = 3
+        restart-strategy.delay = 30000
       }
+      redisdb.connection.timeout = 30000
       redis {
+        host = "{{ .Values.global.redis.host }}"
+        port = {{ .Values.global.redis.port }}
         database {
+          default.id = 0
           duplicationstore.id = 1
           key.expiry.seconds = {{ .Values.telemetry_extractor_key_expiry_seconds }}
           contentstore.id = 5
         }
       }
       redis-meta {
-          database {
-            contentstore.id = 5
-          }
-          host = {{ .Values.metadata2_redis_host | default .Values.global.redis.host }}
-          port = {{ .Values.metadata2_redis_port | default .Values.global.redis.port }}
+        database {
+          contentstore.id = 5
         }
+        host = {{ .Values.metadata2_redis_host | default .Values.global.redis.host }}
+        port = {{ .Values.metadata2_redis_port | default .Values.global.redis.port }}
+      }
+      postgres {
+        host = "{{ .Values.global.postgresql.host }}"
+        port = "{{ .Values.global.postgresql.port }}"
+        maxConnections = "{{ .Values.postgres.max_connections }}"
+        sslMode = "{{ .Values.postgres.sslmode }}"
+        user = "{{ .Values.global.postgresql.postgresqlUsername }}"
+        password = "{{ .Values.global.postgresql.postgresqlPassword }}"
+        database = "{{ .Values.postgres.db_name }}"
+      }
+      lms-cassandra {
+        host = "{{ .Values.global.cassandra.host }}"
+        port = "{{ .Values.global.cassandra.port }}"
+        keyspace = "{{ .Values.middleware_cassandra_keyspace }}"
+      }
+      schema {
+        basePath = "https://{{ .Values.global.object_storage_endpoint }}/contents/schemas/local"
+        supportedVersion = {
+          itemset = "2.0"
+        }
+      }
       redact.events.list = ["ASSESS","RESPONSE"]
     flink-conf: |+
       jobmanager.memory.flink.size: 1024m
@@ -440,7 +656,39 @@ flink_jobs:
     enabled: true
     config: |+
       include file("/data/flink/conf/base-config.conf")
+      job {
+        env = "{{ .Values.global.env }}"
+        enable.distributed.checkpointing = true
+
+        {{- if eq "oci" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "s3://{{ .Values.global.public_container_name }}/checkpoint"
+        }
+        {{- else if eq "azure" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "wasbs://{{ .Values.global.public_container_name }}@{{ .Values.global.object_storage_endpoint }}/checkpoint"
+        }
+        {{- else if eq "gcs" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "gs://{{ .Values.global.public_container_name }}/checkpoint"
+        }
+        {{- else }}
+        statebackend {
+          base.url = "file:///tmp/flink-checkpoints"
+        }
+        {{- end }}
+
+        checkpointing.interval = {{ .Values.checkpoint_interval }}
+        checkpointing.pause.between.seconds = {{ .Values.checkpoint_pause_between_seconds }}
+        checkpointing.compression.enabled = {{ .Values.checkpoint_compression_enabled }}
+        restart-strategy.attempts = {{ .Values.restart_attempts }}
+        restart-strategy.delay = {{ .Values.restart_delay }}
+      }
       kafka {
+        broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+        producer.broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+        consumer.broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+        zookeeper = "{{ .Values.global.zookeeper.host }}:{{ .Values.global.zookeeper.port }}"
         input.topic = {{ .Values.global.env }}.telemetry.raw
         output.failed.topic = {{ .Values.global.env }}.telemetry.failed
         output.primary.route.topic = {{ .Values.global.env }}.telemetry.unique
@@ -451,21 +699,63 @@ flink_jobs:
         output.denorm.secondary.route.topic = {{ .Values.global.env }}.telemetry.unique.secondary
         output.denorm.primary.route.topic = {{ .Values.global.env }}.telemetry.unique.primary
         groupId = {{ .Values.global.env }}-pipeline-preprocessor-group
+        producer {
+          max-request-size = 1572864
+          batch.size = 98304
+          linger.ms = 10
+        }
       }
       task {
+        parallelism = 1
         consumer.parallelism = {{ .Values.pipeline_preprocessor_consumer_parallelism }}
         downstream.operators.parallelism = {{ .Values.pipeline_preprocessor_operators_parallelism }}
+        checkpointing.compressed = true
+        checkpointing.interval = 60000
+        checkpointing.pause.between.seconds = 5000
+        restart-strategy.attempts = 3
+        restart-strategy.delay = 30000
+      }
+      redisdb.connection.timeout = 30000
+      redis {
+        host = "{{ .Values.global.redis.host }}"
+        port = {{ .Values.global.redis.port }}
+        database {
+          default.id = 0
+          duplicationstore.id = 7
+          key.expiry.seconds = {{ .Values.pipeline_preprocessor_key_expiry_seconds }}
+        }
+      }
+      redis-meta {
+        host = "{{ .Values.metadata2_redis_host | default .Values.global.redis.host }}"
+        port = {{ .Values.metadata2_redis_port | default .Values.global.redis.port }}
+        database {
+          default.id = 0
+        }
+      }
+      postgres {
+        host = "{{ .Values.global.postgresql.host }}"
+        port = "{{ .Values.global.postgresql.port }}"
+        maxConnections = "{{ .Values.postgres.max_connections }}"
+        sslMode = "{{ .Values.postgres.sslmode }}"
+        user = "{{ .Values.global.postgresql.postgresqlUsername }}"
+        password = "{{ .Values.global.postgresql.postgresqlPassword }}"
+        database = "{{ .Values.postgres.db_name }}"
+      }
+      lms-cassandra {
+        host = "{{ .Values.global.cassandra.host }}"
+        port = "{{ .Values.global.cassandra.port }}"
+        keyspace = "{{ .Values.middleware_cassandra_keyspace }}"
+      }
+      schema {
+        basePath = "https://{{ .Values.global.object_storage_endpoint }}/contents/schemas/local"
+        supportedVersion = {
+          itemset = "2.0"
+        }
       }
       telemetry.schema.path="schemas/telemetry/3.0"
       default.channel="b00bc992ef25f1a9a8d63291e20efc8d"
       dedup.producer.included.ids = ["{{ .Values.global.env }}{{ .Values.portal_id }}", "{{ .Values.global.env }}{{ .Values.desktop_id }}"]
       secondary.events = ["INTERACT", "IMPRESSION", "SHARE_ITEM"]
-      redis {
-        database {
-          duplicationstore.id = 7
-          key.expiry.seconds = {{ .Values.pipeline_preprocessor_key_expiry_seconds }}
-        }
-      }
     flink-conf: |+
       jobmanager.memory.flink.size: 1024m
       taskmanager.memory.flink.size: 1024m
@@ -484,7 +774,39 @@ flink_jobs:
     enabled: true
     config: |+
       include file("/data/flink/conf/base-config.conf")
+      job {
+        env = "{{ .Values.global.env }}"
+        enable.distributed.checkpointing = true
+
+        {{- if eq "oci" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "s3://{{ .Values.global.public_container_name }}/checkpoint"
+        }
+        {{- else if eq "azure" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "wasbs://{{ .Values.global.public_container_name }}@{{ .Values.global.object_storage_endpoint }}/checkpoint"
+        }
+        {{- else if eq "gcs" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "gs://{{ .Values.global.public_container_name }}/checkpoint"
+        }
+        {{- else }}
+        statebackend {
+          base.url = "file:///tmp/flink-checkpoints"
+        }
+        {{- end }}
+
+        checkpointing.interval = {{ .Values.checkpoint_interval }}
+        checkpointing.pause.between.seconds = {{ .Values.checkpoint_pause_between_seconds }}
+        checkpointing.compression.enabled = {{ .Values.checkpoint_compression_enabled }}
+        restart-strategy.attempts = {{ .Values.restart_attempts }}
+        restart-strategy.delay = {{ .Values.restart_delay }}
+      }
       kafka {
+        broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+        producer.broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+        consumer.broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+        zookeeper = "{{ .Values.global.zookeeper.host }}:{{ .Values.global.zookeeper.port }}"
         input.telemetry.topic = {{ .Values.global.env }}.telemetry.unique.secondary
         input.summary.topic = {{ .Values.global.env }}.telemetry.derived
         telemetry.denorm.output.topic = {{ .Values.global.env }}.telemetry.denorm
@@ -493,25 +815,41 @@ flink_jobs:
         output.failed.topic = {{ .Values.global.env }}.telemetry.failed
         output.duplicate.topic = {{ .Values.global.env }}.telemetry.duplicate
         groupId = {{ .Values.global.env }}-telemetry-denorm-secondary-group
+        producer {
+          max-request-size = 1572864
+          batch.size = 98304
+          linger.ms = 10
+        }
       }
-      skip.events = ["INTERRUPT"]
-      permit.eid=["AUDIT"]
       task {
+        parallelism = 1
+        consumer.parallelism = {{ .Values.denorm_secondary_consumer_parallelism }}
+        checkpointing.compressed = true
+        checkpointing.interval = 60000
+        checkpointing.pause.between.seconds = 5000
+        restart-strategy.attempts = 3
+        restart-strategy.delay = 30000
         window.count = {{ .Values.denorm_secondary_window_count }}
         window.shards = {{ .Values.denorm_secondary_window_shards }}
-        consumer.parallelism = {{ .Values.denorm_secondary_consumer_parallelism }}
         telemetry.downstream.operators.parallelism = {{ .Values.telemetry_denorm_secondary_operators_parallelism }}
         summary.downstream.operators.parallelism = {{ .Values.summary_denorm_operators_parallelism  }}
       }
+      redisdb.connection.timeout = 30000
       redis {
+        host = "{{ .Values.global.redis.host }}"
+        port = {{ .Values.global.redis.port }}
         database {
+          default.id = 0
           duplicationstore.id = 9
           key.expiry.seconds = {{ .Values.de_normalization_duplicationstore_key_expiry_seconds }}
         }
       }
       # redis-metadata
       redis-meta {
+        host = "{{ .Values.metadata2_redis_host | default .Values.global.redis.host }}"
+        port = {{ .Values.metadata2_redis_port | default .Values.global.redis.port }}
         database {
+          default.id = 0
           devicestore.id = 2
           userstore.id = 12
           contentstore.id = 5
@@ -522,11 +860,29 @@ flink_jobs:
         device.host = {{ .Values.metadata2_redis_host | default .Values.global.redis.host }}
         user.host = {{ .Values.metadata2_redis_host | default .Values.global.redis.host }}
         dialcode.host = {{ .Values.metadata2_redis_host | default .Values.global.redis.host }}
-        content.port = {{ .Values.metadata2_redis_port | default .Values.global.redis.port }}
-        device.port = {{ .Values.metadata2_redis_port | default .Values.global.redis.port }}
-        user.port = {{ .Values.metadata2_redis_port | default .Values.global.redis.port }}
-        dialcode.port = {{ .Values.metadata2_redis_port | default .Values.global.redis.port }}
       }
+      postgres {
+        host = "{{ .Values.global.postgresql.host }}"
+        port = "{{ .Values.global.postgresql.port }}"
+        maxConnections = "{{ .Values.postgres.max_connections }}"
+        sslMode = "{{ .Values.postgres.sslmode }}"
+        user = "{{ .Values.global.postgresql.postgresqlUsername }}"
+        password = "{{ .Values.global.postgresql.postgresqlPassword }}"
+        database = "{{ .Values.postgres.db_name }}"
+      }
+      lms-cassandra {
+        host = "{{ .Values.global.cassandra.host }}"
+        port = "{{ .Values.global.cassandra.port }}"
+        keyspace = "{{ .Values.middleware_cassandra_keyspace }}"
+      }
+      schema {
+        basePath = "https://{{ .Values.global.object_storage_endpoint }}/contents/schemas/local"
+        supportedVersion = {
+          itemset = "2.0"
+        }
+      }
+      skip.events = ["INTERRUPT"]
+      permit.eid=["AUDIT"]
       # config version
       user_denorm_version = v2
     flink-conf: |+
@@ -547,6 +903,34 @@ flink_jobs:
     enabled: true
     config: |+
       include file("/data/flink/conf/base-config.conf")
+      job {
+        env = "{{ .Values.global.env }}"
+        enable.distributed.checkpointing = true
+
+        {{- if eq "oci" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "s3://{{ .Values.global.public_container_name }}/checkpoint"
+        }
+        {{- else if eq "azure" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "wasbs://{{ .Values.global.public_container_name }}@{{ .Values.global.object_storage_endpoint }}/checkpoint"
+        }
+        {{- else if eq "gcs" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "gs://{{ .Values.global.public_container_name }}/checkpoint"
+        }
+        {{- else }}
+        statebackend {
+          base.url = "file:///tmp/flink-checkpoints"
+        }
+        {{- end }}
+
+        checkpointing.interval = {{ .Values.checkpoint_interval }}
+        checkpointing.pause.between.seconds = {{ .Values.checkpoint_pause_between_seconds }}
+        checkpointing.compression.enabled = {{ .Values.checkpoint_compression_enabled }}
+        restart-strategy.attempts = {{ .Values.restart_attempts }}
+        restart-strategy.delay = {{ .Values.restart_delay }}
+      }
       kafka {
         input.telemetry.topic = {{ .Values.global.env }}.telemetry.unique.primary
         input.summary.topic = {{ .Values.global.env }}.telemetry.derived
@@ -585,10 +969,6 @@ flink_jobs:
         device.host = {{ .Values.metadata2_redis_host | default .Values.global.redis.host }}
         user.host = {{ .Values.metadata2_redis_host | default .Values.global.redis.host }}
         dialcode.host = {{ .Values.metadata2_redis_host | default .Values.global.redis.host }}
-        content.port = {{ .Values.metadata2_redis_port | default .Values.global.redis.port }}
-        device.port = {{ .Values.metadata2_redis_port | default .Values.global.redis.port }}
-        user.port = {{ .Values.metadata2_redis_port | default .Values.global.redis.port }}
-        dialcode.port = {{ .Values.metadata2_redis_port | default .Values.global.redis.port }}
       }
       # config version
       user_denorm_version = v2
@@ -606,10 +986,39 @@ flink_jobs:
       jobmanager.memory.process.size: 1600m
     job_classname: org.sunbird.dp.denorm.task.DenormalizationStreamTask
 
+  
   summary-denormalization:
     enabled: true
     config: |+
       include file("/data/flink/conf/base-config.conf")
+      job {
+        env = "{{ .Values.global.env }}"
+        enable.distributed.checkpointing = true
+
+        {{- if eq "oci" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "s3://{{ .Values.global.public_container_name }}/checkpoint"
+        }
+        {{- else if eq "azure" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "wasbs://{{ .Values.global.public_container_name }}@{{ .Values.global.object_storage_endpoint }}/checkpoint"
+        }
+        {{- else if eq "gcs" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "gs://{{ .Values.global.public_container_name }}/checkpoint"
+        }
+        {{- else }}
+        statebackend {
+          base.url = "file:///tmp/flink-checkpoints"
+        }
+        {{- end }}
+
+        checkpointing.interval = {{ .Values.checkpoint_interval }}
+        checkpointing.pause.between.seconds = {{ .Values.checkpoint_pause_between_seconds }}
+        checkpointing.compression.enabled = {{ .Values.checkpoint_compression_enabled }}
+        restart-strategy.attempts = {{ .Values.restart_attempts }}
+        restart-strategy.delay = {{ .Values.restart_delay }}
+      }
       kafka {
         input.telemetry.topic = {{ .Values.global.env }}.telemetry.unique
         input.summary.topic = {{ .Values.global.env }}.telemetry.derived
@@ -648,10 +1057,6 @@ flink_jobs:
         device.host = {{ .Values.metadata2_redis_host | default .Values.global.redis.host }}
         user.host = {{ .Values.metadata2_redis_host | default .Values.global.redis.host }}
         dialcode.host = {{ .Values.metadata2_redis_host | default .Values.global.redis.host }}
-        content.port = {{ .Values.metadata2_redis_port | default .Values.global.redis.port }}
-        device.port = {{ .Values.metadata2_redis_port | default .Values.global.redis.port }}
-        user.port = {{ .Values.metadata2_redis_port | default .Values.global.redis.port }}
-        dialcode.port = {{ .Values.metadata2_redis_port | default .Values.global.redis.port }}
       }
       # config version
       user_denorm_version = v2
@@ -673,6 +1078,32 @@ flink_jobs:
     enabled: true
     config: |+
       include file("/data/flink/conf/base-config.conf")
+      job {
+        env = "{{ .Values.global.env }}"
+        enable.distributed.checkpointing = true
+        {{- if eq "oci" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "s3://{{ .Values.global.public_container_name }}/checkpoint"
+        }
+        {{- else if eq "azure" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "wasbs://{{ .Values.global.public_container_name }}@{{ .Values.global.object_storage_endpoint }}/checkpoint"
+        }
+        {{- else if eq "gcs" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "gs://{{ .Values.global.public_container_name }}/checkpoint"
+        }
+        {{- else }}
+        statebackend {
+          base.url = "file:///tmp/flink-checkpoints"
+        }
+        {{- end }}
+        checkpointing.interval = {{ .Values.checkpoint_interval }}
+        checkpointing.pause.between.seconds = {{ .Values.checkpoint_pause_between_seconds }}    
+        checkpointing.compression.enabled = {{ .Values.checkpoint_compression_enabled }}
+        restart-strategy.attempts = {{ .Values.restart_attempts }}
+        restart-strategy.delay = {{ .Values.restart_delay }}
+      }   
       kafka {
         input.topic = {{ .Values.global.env }}.telemetry.denorm
         output.telemetry.route.topic = {{ .Values.global.env }}.druid.events.telemetry
@@ -722,6 +1153,34 @@ flink_jobs:
     enabled: true
     config: |+
       include file("/data/flink/conf/base-config.conf")
+      job {
+        env = "{{ .Values.global.env }}"
+        enable.distributed.checkpointing = true
+
+        {{- if eq "oci" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "s3://{{ .Values.global.public_container_name }}/checkpoint"
+        }
+        {{- else if eq "azure" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "wasbs://{{ .Values.global.public_container_name }}@{{ .Values.global.object_storage_endpoint }}/checkpoint"
+        }
+        {{- else if eq "gcs" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "gs://{{ .Values.global.public_container_name }}/checkpoint"
+        }
+        {{- else }}
+        statebackend {
+          base.url = "file:///tmp/flink-checkpoints"
+        }
+        {{- end }}
+
+        checkpointing.interval = {{ .Values.checkpoint_interval }}
+        checkpointing.pause.between.seconds = {{ .Values.checkpoint_pause_between_seconds }}
+        checkpointing.compression.enabled = {{ .Values.checkpoint_compression_enabled }}
+        restart-strategy.attempts = {{ .Values.restart_attempts }}
+        restart-strategy.delay = {{ .Values.restart_delay }}
+      }
       kafka {
         producer.broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
         consumer.broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
@@ -759,6 +1218,34 @@ flink_jobs:
     enabled: true
     config: |+
       include file("/data/flink/conf/base-config.conf")
+      job {
+        env = "{{ .Values.global.env }}"
+        enable.distributed.checkpointing = true
+
+        {{- if eq "oci" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "s3://{{ .Values.global.public_container_name }}/checkpoint"
+        }
+        {{- else if eq "azure" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "wasbs://{{ .Values.global.public_container_name }}@{{ .Values.global.object_storage_endpoint }}/checkpoint"
+        }
+        {{- else if eq "gcs" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "gs://{{ .Values.global.public_container_name }}/checkpoint"
+        }
+        {{- else }}
+        statebackend {
+          base.url = "file:///tmp/flink-checkpoints"
+        }
+        {{- end }}
+
+        checkpointing.interval = {{ .Values.checkpoint_interval }}
+        checkpointing.pause.between.seconds = {{ .Values.checkpoint_pause_between_seconds }}
+        checkpointing.compression.enabled = {{ .Values.checkpoint_compression_enabled }}
+        restart-strategy.attempts = {{ .Values.restart_attempts }}
+        restart-strategy.delay = {{ .Values.restart_delay }}
+      }
       kafka {
         producer.broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
         consumer.broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
@@ -796,6 +1283,34 @@ flink_jobs:
     enabled: true
     config: |+
       include file("/data/flink/conf/base-config.conf")
+      job {
+        env = "{{ .Values.global.env }}"
+        enable.distributed.checkpointing = true
+
+        {{- if eq "oci" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "s3://{{ .Values.global.public_container_name }}/checkpoint"
+        }
+        {{- else if eq "azure" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "wasbs://{{ .Values.global.public_container_name }}@{{ .Values.global.object_storage_endpoint }}/checkpoint"
+        }
+        {{- else if eq "gcs" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "gs://{{ .Values.global.public_container_name }}/checkpoint"
+        }
+        {{- else }}
+        statebackend {
+          base.url = "file:///tmp/flink-checkpoints"
+        }
+        {{- end }}
+
+        checkpointing.interval = {{ .Values.checkpoint_interval }}
+        checkpointing.pause.between.seconds = {{ .Values.checkpoint_pause_between_seconds }}
+        checkpointing.compression.enabled = {{ .Values.checkpoint_compression_enabled }}
+        restart-strategy.attempts = {{ .Values.restart_attempts }}
+        restart-strategy.delay = {{ .Values.restart_delay }}
+      }
       kafka {
         input.topic = {{ .Values.global.env }}.telemetry.audit
         groupId = {{ .Values.global.env }}-user-cache-updater-consumer-group
@@ -886,6 +1401,34 @@ flink_jobs:
     enabled: true
     config: |+
       include file("/data/flink/conf/base-config.conf")
+      job {
+        env = "{{ .Values.global.env }}"
+        enable.distributed.checkpointing = true
+
+        {{- if eq "oci" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "s3://{{ .Values.global.public_container_name }}/checkpoint"
+        }
+        {{- else if eq "azure" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "wasbs://{{ .Values.global.public_container_name }}@{{ .Values.global.object_storage_endpoint }}/checkpoint"
+        }
+        {{- else if eq "gcs" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "gs://{{ .Values.global.public_container_name }}/checkpoint"
+        }
+        {{- else }}
+        statebackend {
+          base.url = "file:///tmp/flink-checkpoints"
+        }
+        {{- end }}
+
+        checkpointing.interval = {{ .Values.checkpoint_interval }}
+        checkpointing.pause.between.seconds = {{ .Values.checkpoint_pause_between_seconds }}
+        checkpointing.compression.enabled = {{ .Values.checkpoint_compression_enabled }}
+        restart-strategy.attempts = {{ .Values.restart_attempts }}
+        restart-strategy.delay = {{ .Values.restart_delay }}
+      }
       kafka {
         input.telemetry.topic = {{ .Values.global.env }}.telemetry.error
         input.summary.topic = {{ .Values.global.env }}.telemetry.derived
@@ -956,4 +1499,5 @@ assessment_aggregator_job_classname: org.sunbird.dp.assessment.task.AssessmentAg
 
 commonAnnotations:
   reloader.stakater.com/auto: "true"
+
 

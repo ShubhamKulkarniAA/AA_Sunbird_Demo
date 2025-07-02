@@ -25,6 +25,22 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+
+      ### ✅ Init container to fully clean Neo4j database dir
+      initContainers:
+        - name: cleanup-neo4j-pvc
+          image: busybox
+          command:
+            - sh
+            - -c
+            - |
+              echo "Cleaning Neo4j database directory completely...";
+              rm -rf /data/;
+              echo "Neo4j database directory cleaned.";
+          volumeMounts:
+            - name: neo4j-data
+              mountPath: /data
+
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -32,6 +48,13 @@ spec:
           env:
             - name: {{ .Values.neo4j.env.name }}
               value: "{{ .Values.neo4j.env.value }}"
+
+          ### ✅ Graceful shutdown to release file locks
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/bash", "-c", "/var/lib/neo4j/bin/neo4j stop"]
+
           {{- if .Values.livenessProbe }}
           livenessProbe:
             {{- toYaml .Values.livenessProbe | nindent 12 }}
@@ -40,40 +63,50 @@ spec:
           readinessProbe:
             {{- toYaml .Values.readinessProbe | nindent 12 }}
           {{- end }}
+
           ports:
             {{- range .Values.service.ports }}
             - name: {{ .name }}
               containerPort: {{ .targetPort }}
             {{- end }}
+
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-      {{- if .Values.configmap.enabled }}
+
           volumeMounts:
-          - name: shared-data
-            mountPath: {{ .Values.neo4j.mountPath.sharedData }}
-          - name: neo4j-data
-            mountPath: "{{ .Values.neo4j.mountPath.neo4jData }}"
+            - name: shared-data
+              mountPath: {{ .Values.neo4j.mountPath.sharedData }}
+            - name: neo4j-data
+              mountPath: {{ .Values.neo4j.mountPath.neo4jData }}
+
         - name: {{ .Values.logstash.name }}
           image: {{ .Values.logstash.image }}
           imagePullPolicy: {{ .Values.logstash.imagePullPolicy }}
+          env:
+            - name: PIPELINE_WORKERS
+              value: "{{ .Values.logstash.pipeline_workers }}"
+            - name: PIPELINE_BATCH_SIZE
+              value: "{{ .Values.logstash.pipeline_bacth_size }}"
           volumeMounts:
             - name: config
               mountPath: {{ .Values.logstash.mountPath.config }}
               subPath: {{ .Values.logstash.mountPath.name }}
             - name: shared-data
               mountPath: {{ .Values.logstash.mountPath.sharedData }}
+
       volumes:
-      - name: config
-        configMap:
-          name: {{ .Values.logstash.configmap.name }}
-          items:
-          - key: {{ .Values.logstash.mountPath.name }}
-            path: {{ .Values.logstash.mountPath.name }}
-      - name: shared-data
-        emptyDir: {}
-      - name: neo4j-data
-        persistentVolumeClaim:
-          claimName: {{ .Values.neo4j.pvc.claimName }}
-      {{- end }}
+        - name: config
+          configMap:
+            name: {{ .Values.logstash.configmap.name }}
+            items:
+              - key: {{ .Values.logstash.mountPath.name }}
+                path: {{ .Values.logstash.mountPath.name }}
+        - name: shared-data
+          emptyDir: {}
+        - name: neo4j-data
+          persistentVolumeClaim:
+            claimName: {{ .Values.neo4j.pvc.claimName }}
+

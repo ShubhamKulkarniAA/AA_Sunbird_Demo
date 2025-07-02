@@ -85,7 +85,7 @@ storageClass: "managed-premium"
 
 ######################### Druid common variables ########################
 druid_directory: "/opt/druid"
-druid_extensions_loadList: '"postgresql-metadata-storage", "druid-kafka-indexing-service", "druid-azure-extensions", "druid-google-extensions"'
+druid_extensions_loadList: '"postgresql-metadata-storage","druid-s3-extensions"'
 
 # Logging
 # Log all runtime properties on startup. Disable to avoid logging properties on startup:
@@ -94,7 +94,7 @@ druid.startup.logging.logProperties: true
 # Druid Metadata Store
 druid_metadata_storage_type: "postgresql"
 druid_postgres: "jdbc:postgresql"
-druid_deepstorage_type: "azure"
+druid_deepstorage_type: "s3"
 druid_storage_directory: "/data"
 druid_postgresql_db: "druid_raw"
 

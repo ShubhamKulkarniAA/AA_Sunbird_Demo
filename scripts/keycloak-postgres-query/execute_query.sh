@@ -6,7 +6,7 @@ POSTGRES_HOST="${POSTGRES_HOST:-postgresql}"
 POSTGRES_PORT="${POSTGRES_PORT:-5432}"
 POSTGRES_DB="${POSTGRES_DB:-keycloak}"
 POSTGRES_USER="${POSTGRES_USER:-postgres}"
-PGPASSWORD="${POSTGRES_PASSWORD:-postgres}"
+export PGPASSWORD="${POSTGRES_PASSWORD:-postgres}"
 
 # Keycloak parameters with default values
 KEYCLOAK_URL="${KEYCLOAK_URL:-keycloak}"
@@ -34,7 +34,7 @@ execute_query() {
 
 # Function to check if PostgreSQL is reachable
 wait_for_postgresql() {
-    until psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -c '\q' 2>/dev/null; do
+    until psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -c '\q'; do
         echo "Waiting for PostgreSQL to become reachable..."
         sleep 5
     done
@@ -51,7 +51,7 @@ wait_for_keycloak() {
 }
 
 # Wait for PostgreSQL
-wait_for_postgresql
+# wait_for_postgresql
 
 # Wait for Keycloak
 wait_for_keycloak

@@ -6,7 +6,7 @@ metadata:
     app: {{ .Chart.Name }}-cassandra-migration
     scope: provisioning
   annotations:
-    {{.Values.global.cassandra.provisioning.annotations | toYaml }}
+    {{.Values.provisioningAnnotations | toYaml }}
 spec:
   template:
     metadata:
@@ -20,7 +20,7 @@ spec:
         imagePullPolicy: IfNotPresent
         command: ["/bin/sh", "-c"]
         args:
-        - "timeout {{ .Values.migration.cassandra.waitTime }} sh -c 'until nc -z {{ .Values.global.cassandra.host }} {{ .Values.global.cassandra.port }}; do echo waiting for cassandra; 10; done'"
+        - "timeout {{ .Values.migration.cassandra.waitTime }} sh -c 'until nc -z {{ .Values.global.cassandra.host }} {{ .Values.global.cassandra.port }}; do echo waiting for cassandra; sleep 10; done'"
       containers:
       - name: migration
         image: maven
@@ -39,7 +39,9 @@ spec:
 
 
           cwd=$PWD
-
+          
+          echo "{{.Values.global.object_storage_endpoint }}"
+          echo "{{ .Values.global.public_container_name }}"
           # Download the migration files
           git clone --filter=blob:none --no-checkout https://github.com/Sunbird-Lern/sunbird-utils --branch=$migration_version --depth 1
           cd sunbird-utils
