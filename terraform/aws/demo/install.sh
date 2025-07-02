@@ -7,7 +7,7 @@ BASE_DIR="$(dirname "$(dirname "$(dirname "$SCRIPT_DIR")")")"
 HELM_CHARTS_ROOT_DIR=$(realpath "${BASE_DIR}/helmcharts")
 ENVIRONMENT=$(basename "$(pwd)")
 
-# --- Fetch AWS Credentials ---
+# --- Fetching AWS Credentials ---
 echo -e "\n--- Loading AWS Credentials ---"
 export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-$(aws configure get aws_access_key_id 2>/dev/null || true)}"
 export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-$(aws configure get aws_secret_access_key 2>/dev/null || true)}"
