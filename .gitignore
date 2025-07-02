@@ -13,6 +13,7 @@ vendor
 terragrunt
 .DS_Store
 *.terrahelpbkp
+terraform/aws/demo/global-cloud-values.yaml
 
 # Ignoring common charts
 **/charts/common
