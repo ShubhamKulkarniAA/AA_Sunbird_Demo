@@ -86,8 +86,8 @@ sidecars: {}
   #   command: ["/bin/sh"] # Override the default command
   #   args: ["-c", "tail -f /var/log/app.log"] # Run a shell script that tails the log file
 
-opa:
-  enabled: false
+  #opa:
+  #enabled: false
 
 jobmanager:
   rpc_port: 6123
@@ -227,7 +227,7 @@ flink_jobs:
   search-indexer:
     enabled: true
     config: |+
-      include file("/data/flink/conf/base-config.conf")
+      include file("file:///data/flink/conf/base-config.conf")
       job {
         env = "{{ .Values.global.env }}"
       }
@@ -276,9 +276,9 @@ flink_jobs:
       jobmanager.memory.process.size: 1600m
       # classloader.resolve-order: "parent-first"
       state.backend: filesystem
-  # ✅ UPDATED: Use S3 scheme for checkpoints and savepoints
-    state.checkpoints.dir: s3://{{ .Values.global.private_container_name }}/checkpoint
-    state.savepoints.dir: s3://{{ .Values.global.private_container_name }}/savepoint
+      fs.s3.impl: org.apache.flink.fs.s3presto.S3FileSystem
+      state.checkpoints.dir: s3://{{ .Values.global.private_container_name }}/checkpoint
+      state.savepoints.dir: s3://{{ .Values.global.private_container_name }}/savepoint
 
     job_classname: org.sunbird.job.searchindexer.task.SearchIndexerStreamTask
 
@@ -324,16 +324,16 @@ flink_jobs:
       jobmanager.memory.process.size: 1600m
       # classloader.resolve-order: "parent-first"
       state.backend: filesystem
-  # ✅ UPDATED: Use S3 scheme for checkpoints and savepoints
-    state.checkpoints.dir: s3://{{ .Values.global.private_container_name }}/checkpoint
-    state.savepoints.dir: s3://{{ .Values.global.private_container_name }}/savepoint
+      fs.s3.impl: org.apache.flink.fs.s3presto.S3FileSystem
+      state.checkpoints.dir: s3://{{ .Values.global.private_container_name }}/checkpoint
+      state.savepoints.dir: s3://{{ .Values.global.private_container_name }}/savepoint
 
     job_classname: org.sunbird.job.auditevent.task.AuditEventGeneratorStreamTask
 
   asset-enrichment:
     enabled: true
     config: |+
-      include file("/data/flink/conf/base-config.conf")
+      include file("file:///data/flink/conf/base-config.conf")
       job {
         env = "{{ .Values.global.env }}"
       }
@@ -397,16 +397,16 @@ flink_jobs:
       jobmanager.memory.process.size: 1600m
       # classloader.resolve-order: "parent-first"
       state.backend: filesystem
-  # ✅ UPDATED: Use S3 scheme for checkpoints and savepoints
-    state.checkpoints.dir: s3://{{ .Values.global.private_container_name }}/checkpoint
-    state.savepoints.dir: s3://{{ .Values.global.private_container_name }}/savepoint
+      fs.s3.impl: org.apache.flink.fs.s3presto.S3FileSystem
+      state.checkpoints.dir: s3://{{ .Values.global.private_container_name }}/checkpoint
+      state.savepoints.dir: s3://{{ .Values.global.private_container_name }}/savepoint
 
     job_classname: org.sunbird.job.assetenricment.task.AssetEnrichmentStreamTask
 
   post-publish-processor:
     enabled: true
     config: |+
-      include file("/data/flink/conf/base-config.conf")
+      include file("file:///data/flink/conf/base-config.conf")
       job {
         env = "{{ .Values.global.env }}"
       }
@@ -478,16 +478,16 @@ flink_jobs:
       jobmanager.memory.process.size: 1600m
       # classloader.resolve-order: "parent-first"
       state.backend: filesystem
-  # ✅ UPDATED: Use S3 scheme for checkpoints and savepoints
-    state.checkpoints.dir: s3://{{ .Values.global.private_container_name }}/checkpoint
-    state.savepoints.dir: s3://{{ .Values.global.private_container_name }}/savepoint
+      fs.s3.impl: org.apache.flink.fs.s3presto.S3FileSystem
+      state.checkpoints.dir: s3://{{ .Values.global.private_container_name }}/checkpoint
+      state.savepoints.dir: s3://{{ .Values.global.private_container_name }}/savepoint
 
     job_classname: org.sunbird.job.postpublish.task.PostPublishProcessorStreamTask
 
   dialcode-context-updater:
     enabled: true
     config: |+
-      include file("/data/flink/conf/base-config.conf")
+      include file("file:///data/flink/conf/base-config.conf")
       job {
         env = "{{ .Values.global.env }}"
       }
@@ -536,9 +536,9 @@ flink_jobs:
       jobmanager.memory.process.size: 1600m
       # classloader.resolve-order: "parent-first"
       state.backend: filesystem
-  # ✅ UPDATED: Use S3 scheme for checkpoints and savepoints
-    state.checkpoints.dir: s3://{{ .Values.global.private_container_name }}/checkpoint
-    state.savepoints.dir: s3://{{ .Values.global.private_container_name }}/savepoint
+      fs.s3.impl: org.apache.flink.fs.s3presto.S3FileSystem
+      state.checkpoints.dir: s3://{{ .Values.global.private_container_name }}/checkpoint
+      state.savepoints.dir: s3://{{ .Values.global.private_container_name }}/savepoint
 
     job_classname: org.sunbird.job.dialcodecontextupdater.task.DialcodeContextUpdaterStreamTask
 
@@ -546,7 +546,7 @@ flink_jobs:
   qrcode-image-generator:
     enabled: true
     config: |+
-      include file("/data/flink/conf/base-config.conf")
+      include file("file:///data/flink/conf/base-config.conf")
       job {
         env = "{{ .Values.global.env }}"
       }
@@ -609,16 +609,16 @@ flink_jobs:
       jobmanager.memory.process.size: 1600m
       # classloader.resolve-order: "parent-first"
       state.backend: filesystem
-  # ✅ UPDATED: Use S3 scheme for checkpoints and savepoints
-    state.checkpoints.dir: s3://{{ .Values.global.private_container_name }}/checkpoint
-    state.savepoints.dir: s3://{{ .Values.global.private_container_name }}/savepoint
+      fs.s3.impl: org.apache.flink.fs.s3presto.S3FileSystem
+      state.checkpoints.dir: s3://{{ .Values.global.private_container_name }}/checkpoint
+      state.savepoints.dir: s3://{{ .Values.global.private_container_name }}/savepoint
 
     job_classname: org.sunbird.job.qrimagegenerator.task.QRCodeImageGeneratorTask
 
   video-stream-generator:
     enabled: true
     config: |+
-      include file("/data/flink/conf/base-config.conf")
+      include file("file:///data/flink/conf/base-config.conf")
       job {
         env = "{{ .Values.global.env }}"
       }
@@ -731,16 +731,16 @@ flink_jobs:
       jobmanager.memory.process.size: 1600m
       # classloader.resolve-order: "parent-first"
       state.backend: filesystem
-  # ✅ UPDATED: Use S3 scheme for checkpoints and savepoints
-    state.checkpoints.dir: s3://{{ .Values.global.private_container_name }}/checkpoint
-    state.savepoints.dir: s3://{{ .Values.global.private_container_name }}/savepoint
+      fs.s3.impl: org.apache.flink.fs.s3presto.S3FileSystem
+      state.checkpoints.dir: s3://{{ .Values.global.private_container_name }}/checkpoint
+      state.savepoints.dir: s3://{{ .Values.global.private_container_name }}/savepoint
 
     job_classname: org.sunbird.job.videostream.task.VideoStreamGeneratorStreamTask
 
   audit-history-indexer:
     enabled: true
     config: |+
-      include file("/data/flink/conf/base-config.conf")
+      include file("file:///data/flink/conf/base-config.conf")
       job {
         env = "{{ .Values.global.env }}"
       }
@@ -773,16 +773,16 @@ flink_jobs:
       jobmanager.memory.process.size: 1600m
       # classloader.resolve-order: "parent-first"
       state.backend: filesystem
-  # ✅ UPDATED: Use S3 scheme for checkpoints and savepoints
-    state.checkpoints.dir: s3://{{ .Values.global.private_container_name }}/checkpoint
-    state.savepoints.dir: s3://{{ .Values.global.private_container_name }}/savepoint
+      fs.s3.impl: org.apache.flink.fs.s3presto.S3FileSystem
+      state.checkpoints.dir: s3://{{ .Values.global.private_container_name }}/checkpoint
+      state.savepoints.dir: s3://{{ .Values.global.private_container_name }}/savepoint
 
     job_classname: org.sunbird.job.audithistory.task.AuditHistoryIndexerStreamTask
 
   content-publish:
     enabled: true
     config: |+
-      include file("/data/flink/conf/base-config.conf")
+      include file("file:///data/flink/conf/base-config.conf")
 
       job {
         env = "{{ .Values.global.env }}"
@@ -971,9 +971,9 @@ flink_jobs:
       jobmanager.memory.process.size: 1600m
       # classloader.resolve-order: "parent-first"
       state.backend: filesystem
-  # ✅ UPDATED: Use S3 scheme for checkpoints and savepoints
-    state.checkpoints.dir: s3://{{ .Values.global.private_container_name }}/checkpoint
-    state.savepoints.dir: s3://{{ .Values.global.private_container_name }}/savepoint
+      fs.s3.impl: org.apache.flink.fs.s3presto.S3FileSystem
+      state.checkpoints.dir: s3://{{ .Values.global.private_container_name }}/checkpoint
+      state.savepoints.dir: s3://{{ .Values.global.private_container_name }}/savepoint
     job_classname: org.sunbird.job.content.task.ContentPublishStreamTask
 
 commonAnnotations:

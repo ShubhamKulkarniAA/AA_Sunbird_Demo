@@ -23,3 +23,31 @@ spec:
     requests:
       storage: {{ .Values.spark.persistence.log_data_pvc.size }}
   storageClassName: {{ .Values.global.storage_class }}
+
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: spark-data-pvc-master
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.spark.persistence.spark_data_pvc_master.size }}
+  storageClassName: {{ .Values.global.storage_class }}
+
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: log-data-pvc-master
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.spark.persistence.log_data_pvc_master.size }}
+  storageClassName: {{ .Values.global.storage_class }}

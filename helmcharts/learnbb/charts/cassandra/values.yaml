@@ -244,22 +244,23 @@ podAntiAffinityPreset: soft
 nodeAffinityPreset:
   ## @param nodeAffinityPreset.type Node affinity preset type. Ignored if `affinity` is set. Allowed values: `soft` or `hard`
   ##
-  type: ""
+  type: "hard"
   ## @param nodeAffinityPreset.key Node label key to match. Ignored if `affinity` is set
   ##
-  key: ""
+  key: "topology.kubernetes.io/zone"
   ## @param nodeAffinityPreset.values Node label values to match. Ignored if `affinity` is set
   ## E.g.
   ## values:
   ##   - e2e-az1
   ##   - e2e-az2
   ##
-  values: []
+  values: 
+    - ap-south-1a
 ## @param affinity Affinity for pod assignment
 ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
 ## NOTE: podAffinityPreset, podAntiAffinityPreset, and nodeAffinityPreset will be ignored when it's set
 ##
-affinity: {}
+#affinity: {}
 ## @param nodeSelector Node labels for pod assignment
 ## ref: https://kubernetes.io/docs/user-guide/node-selection/
 ##

@@ -1,8 +1,8 @@
 {{- $currentScope := .}}
 {{- range $jobName, $jobData := .Values.flink_jobs }}
-{{- if $jobData.enabled }}
-{{- with $currentScope }}
-{{ $component := "taskmanager" }}
+  {{- if and (kindIs "map" $jobData) ($jobData.enabled) }}
+    {{- with $currentScope }}
+    {{ $component := "taskmanager" }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -30,9 +30,7 @@ spec:
         checksum/config: {{ .Files.Glob "configs/*" | toYaml | sha256sum }}
         checksum/job-config: {{ $jobData | toYaml | sha256sum }}
     spec:
-      {{- if .Values.global.serviceAccount.create }}
-      serviceAccountName: {{ .Values.global.serviceAccount.name }}
-      {{- end }}
+      serviceAccountName: {{ include "common.names.fullname" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       {{- with .Values.image.pullSecrets }}
@@ -55,9 +53,6 @@ spec:
   {{- end }}
   {{- if eq .Values.global.checkpoint_store_type "gcs" }}
             "-Dgoogle.cloud.auth.service.account.enable=true",
-            "-Dfs.gs.impl=com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem",
-            "-Dfs.AbstractFileSystem.gs.impl=com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS",
-            "-DHADOOP_CONF_DIR=/opt/flink/conf",
   {{- end }}
   {{- if eq .Values.global.checkpoint_store_type "s3" }}
             "-Ds3.access-key={{ .Values.s3_access_key }}",
@@ -81,21 +76,22 @@ spec:
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           volumeMounts:
-          - name: flink-config-volume
-            mountPath: /opt/flink/conf/flink-conf.yaml
-            subPath: flink-conf.yaml
-          - name: flink-config-volume
-            mountPath: /opt/flink/conf/log4j-console.properties
-            subPath: log4j-console.properties
+            - name: flink-config-volume
+              mountPath: /opt/flink/conf/flink-conf.yaml
+              subPath: flink-conf.yaml
+            - name: flink-config-volume
+              mountPath: /opt/flink/conf/log4j-console.properties
+              subPath: log4j-console.properties
       volumes:
-      - name: flink-config-volume
-        configMap:
-          name: {{ $jobName }}-config
-          items:
-          - key: flink-conf
-            path: flink-conf.yaml
-          - key: log4j_console_properties
-            path: log4j-console.properties 
+        - name: flink-config-volume
+          configMap:
+            name: {{ $jobName }}-config
+            items:
+              - key: flink-conf
+                path: flink-conf.yaml
+              - key: log4j_console_properties
+                path: log4j-console.properties
+
 {{ $component := "jobmanager" }}
 ---
 apiVersion: apps/v1
@@ -124,9 +120,7 @@ spec:
         checksum/config: {{ .Files.Glob "configs/*" | toYaml | sha256sum }}
         checksum/job-config: {{ $jobData | toYaml | sha256sum }}
     spec:
-      {{- if .Values.global.serviceAccount.create }}
-      serviceAccountName: {{ .Values.global.serviceAccount.name }}
-      {{- end }}
+      serviceAccountName: {{ include "common.names.fullname" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       {{- with .Values.image.pullSecrets }}
@@ -149,9 +143,6 @@ spec:
   {{- end }}
   {{- if eq .Values.global.checkpoint_store_type "gcs" }}
             "-Dgoogle.cloud.auth.service.account.enable=true",
-            "-Dfs.gs.impl=com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem",
-            "-Dfs.AbstractFileSystem.gs.impl=com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS",
-            "-DHADOOP_CONF_DIR=/opt/flink/conf",
   {{- end }}
   {{- if eq .Values.global.checkpoint_store_type "s3" }}
             "-Ds3.access-key={{ .Values.s3_access_key }}",
@@ -159,18 +150,17 @@ spec:
             "-Ds3.endpoint={{ .Values.s3_endpoint }}",
             "-Ds3.path.style.access={{ .Values.s3_path_style_access }}",
   {{- end }}
-          
-                "--job-classname={{ $jobData.job_classname }}", 
-                "-Dweb.submit.enable=false",
-                "-Dmetrics.reporter.prom.class=org.apache.flink.metrics.prometheus.PrometheusReporter",
-                "-Dmetrics.reporter.prom.port={{ .Values.jobmanager.prom_port }}",
-                "-Djobmanager.rpc.address={{ $jobName }}-jobmanager",
-                "-Djobmanager.rpc.port={{ .Values.jobmanager.rpc_port }}",
-                "-Dparallelism.default=1", 
-                "-Dblob.server.port={{ .Values.jobmanager.blob_port }}", 
-                "-Dqueryable-state.server.ports={{ .Values.jobmanager.query_port }}",
-                "--config.file.path",
-                "/data/flink/conf/{{ $jobName }}.conf"]            
+            "--job-classname={{ $jobData.job_classname }}",
+            "-Dweb.submit.enable=false",
+            "-Dmetrics.reporter.prom.class=org.apache.flink.metrics.prometheus.PrometheusReporter",
+            "-Dmetrics.reporter.prom.port={{ .Values.jobmanager.prom_port }}",
+            "-Djobmanager.rpc.address={{ $jobName }}-jobmanager",
+            "-Djobmanager.rpc.port={{ .Values.jobmanager.rpc_port }}",
+            "-Dparallelism.default=1",
+            "-Dblob.server.port={{ .Values.jobmanager.blob_port }}",
+            "-Dqueryable-state.server.ports={{ .Values.jobmanager.query_port }}",
+            "--config.file.path",
+            "/data/flink/conf/{{ $jobName }}.conf"]
           ports:
             {{- range .Values.service.ports }}
             - name: {{ .name }}
@@ -181,31 +171,33 @@ spec:
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           volumeMounts:
-          - name: flink-config-volume
-            mountPath: /opt/flink/conf/flink-conf.yaml
-            subPath: flink-conf.yaml
-          - name: flink-config-volume
-            mountPath: /data/flink/conf/base-config.conf
-            subPath: base-config.conf
-          - name: flink-config-volume
-            mountPath: /data/flink/conf/{{ $jobName }}.conf
-            subPath: {{ $jobName }}.conf
-          - name: flink-config-volume
-            mountPath: /opt/flink/conf/log4j-console.properties
-            subPath: log4j-console.properties
+            - name: flink-config-volume
+              mountPath: /opt/flink/conf/flink-conf.yaml
+              subPath: flink-conf.yaml
+            - name: flink-config-volume
+              mountPath: /data/flink/conf/base-config.conf
+              subPath: base-config.conf
+            - name: flink-config-volume
+              mountPath: /data/flink/conf/{{ $jobName }}.conf
+              subPath: {{ $jobName }}.conf
+            - name: flink-config-volume
+              mountPath: /opt/flink/conf/log4j-console.properties
+              subPath: log4j-console.properties
       volumes:
-      - name: flink-config-volume
-        configMap:
-          name: {{ $jobName }}-config
-          items:
-          - key: flink-conf
-            path: flink-conf.yaml
-          - key: base-config
-            path: base-config.conf
-          - key: config
-            path: {{ $jobName }}.conf
-          - key: log4j_console_properties
-            path: log4j-console.properties
+        - name: flink-config-volume
+          configMap:
+            name: {{ $jobName }}-config
+            items:
+              - key: flink-conf
+                path: flink-conf.yaml
+              - key: base-config
+                path: base-config.conf
+              - key: config
+                path: {{ $jobName }}.conf
+              - key: log4j_console_properties
+                path: log4j-console.properties
+
 {{- end }}
-{{- end}}
-{{- end}}
+{{- end }}
+{{- end }}
+

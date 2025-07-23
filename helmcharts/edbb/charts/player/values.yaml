@@ -130,10 +130,10 @@ global:
   sunbird_logged_default_token: ""
   adminutil_learner_api_auth_key: ""
   kafka:
-    host: kafka
+    host: kafka-edbb
     port: 9092
   cassandra:
-    host: cassandra
+    host: cassandra-edbb
     port: 9042
   redis:
-    host: redis-master
+    host: redis-edbb-master

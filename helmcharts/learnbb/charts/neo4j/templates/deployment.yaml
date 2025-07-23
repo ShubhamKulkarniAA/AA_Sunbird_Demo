@@ -25,6 +25,20 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+
+      
+      initContainers:
+        - name: clear-store-lock
+          image: busybox:latest
+          command:
+            - sh
+            - -c
+            - "find /var/lib/neo4j/data/databases/ -name store_lock -exec rm -f {} + || true"
+          volumeMounts:
+            - name: neo4j-data
+              mountPath: /var/lib/neo4j/data
+
+
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -49,12 +63,15 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-      {{- if .Values.configmap.enabled }}
           volumeMounts:
-          - name: shared-data
-            mountPath: {{ .Values.neo4j.mountPath.sharedData }}
-          - name: neo4j-data
-            mountPath: "{{ .Values.neo4j.mountPath.neo4jData }}"
+            - name: neo4j-data
+              mountPath: "{{ .Values.neo4j.mountPath.neo4jData }}"
+            {{- if .Values.configmap.enabled }}
+            - name: shared-data
+              mountPath: {{ .Values.neo4j.mountPath.sharedData }}
+            {{- end }}
+
+        {{- if .Values.configmap.enabled }}
         - name: {{ .Values.logstash.name }}
           image: {{ .Values.logstash.image }}
           imagePullPolicy: {{ .Values.logstash.imagePullPolicy }}
@@ -64,16 +81,20 @@ spec:
               subPath: {{ .Values.logstash.mountPath.name }}
             - name: shared-data
               mountPath: {{ .Values.logstash.mountPath.sharedData }}
+        {{- end }}
+
       volumes:
-      - name: config
-        configMap:
-          name: {{ .Values.logstash.configmap.name }}
-          items:
-          - key: {{ .Values.logstash.mountPath.name }}
-            path: {{ .Values.logstash.mountPath.name }}
-      - name: shared-data
-        emptyDir: {}
-      - name: neo4j-data
-        persistentVolumeClaim:
-          claimName: {{ .Values.neo4j.pvc.claimName }}
-      {{- end }}
+        {{- if .Values.configmap.enabled }}
+        - name: config
+          configMap:
+            name: {{ .Values.logstash.configmap.name }}
+            items:
+              - key: {{ .Values.logstash.mountPath.name }}
+                path: {{ .Values.logstash.mountPath.name }}
+        - name: shared-data
+          emptyDir: {}
+        {{- end }}
+        - name: neo4j-data
+          persistentVolumeClaim:
+            claimName: {{ .Values.neo4j.pvc.claimName }}
+

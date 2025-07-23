@@ -5,6 +5,7 @@ provisioningAnnotations: &provisioningAnnotations
 
 neo4j: &neo4j
   enabled: true
+  fullnameOverride: "neo4j-ibb"
   host: "neo4j"
   port: 7687
   boltPort: 8687
@@ -15,12 +16,19 @@ neo4j: &neo4j
     "helm.sh/hook-weight": "-5"
   provisioning:
     annotations: *provisioningAnnotations
-    waitForNeo4j: "true"
+      #waitForNeo4j: "true"
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "1"
+      memory: "2Gi"
 
 redis: &redis
   enabled: true
   nameOverride: "redis"
-  fullnameOverride: "redis"
+  fullnameOverride: "redis-ibb"
   auth:
     enabled: false
   host: "redis-master"
@@ -34,7 +42,7 @@ redis: &redis
       size: 25Gi
 
 zookeeper: &zookeeper
-  fullnameOverride: zookeeper
+  fullnameOverride: zookeeper-ibb
   nameOverride: zookeeper
   host: "zookeeper"
   port: 2181
@@ -43,7 +51,7 @@ zookeeper: &zookeeper
 
 elasticsearch: &es
   enabled: true
-  fullnameOverride: "elasticsearch"
+  fullnameOverride: "elasticsearch-ibb"
   host: "elasticsearch"
   port: 9200
   image:
@@ -81,7 +89,7 @@ elasticsearch: &es
 cassandra: &cassandra
   enabled: true
   nameOverride: "cassandra"
-  fullnameOverride: "cassandra"
+  fullnameOverride: "cassandra-ibb"
   host: "cassandra"
   port: 9042
   provisioning:
@@ -103,7 +111,7 @@ kafka: &kafka
   zookeeper: *zookeeper
   enabled: true
   nameOverride: "kafka"
-  fullnameOverride: "kafka"
+  fullnameOverride: "kafka-ibb"
   clientProtocol: PLAINTEXT
   host: "kafka"
   port: 9092
@@ -154,6 +162,9 @@ global:
   installation: *installation
   elasticsearch: *es
   provisioningAnnotations: *provisioningAnnotations
+  serviceAccount:
+    create: true
+    name: inquirybb
 
 migration:
  cassandra:

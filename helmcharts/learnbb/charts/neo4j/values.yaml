@@ -16,9 +16,17 @@ commonAnnotations:
 
 commonLabels: {}
 
-livenessProbe: {}
+livenessProbe:
+    exec:
+      command: ["sh", "-c", "rm -f /var/lib/neo4j/data/databases/graph.db/store_lock"]
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 5
 readinessProbe: {}
-
+volumeMounts:
+   - name: neo4j-data
+     mountPath: "{{ .Values.neo4j.mountPath.neo4jData }}"
 
 service:
   type: ClusterIP
@@ -91,7 +99,7 @@ neo4j:
     sharedData: /var/lib/neo4j/logs/plugins/txn-handler
     neo4jData: "/data"
   pvc:
-    claimName: neo4j-claim
+    claimName: neo4j-lbb-claim
     accessModes: ReadWriteOnce
     annotations: "keep"
     resources:

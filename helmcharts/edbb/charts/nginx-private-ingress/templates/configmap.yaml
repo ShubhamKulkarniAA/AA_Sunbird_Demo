@@ -10,14 +10,16 @@ metadata:
 {{ include "common.tplvalues.render" (dict "value" .Values.commonAnnotations "context" $) | nindent 4 }}
   {{- end }}
 data:
-{{- $currentScope := .}}
+{{- $currentScope := . }}
 {{- range $path, $_ := .Files.Glob "configs/*" }} # Take only root level files (configs/*) for configmaps
   {{- if ne $path "configs/env.yaml" }} # Skip env.yaml as configmap, as it's env file
-    {{ base $path | nindent 2 }}: |-
-      {{- with $currentScope }}
-      {{- $var := .Files.Get $path }}
-      {{- include "common.tplvalues.render" (dict "value" $var "context" $) | nindent 6 }}
-      {{- end }}
+  {{ base $path | nindent 2 }}: |-
+    {{- with $currentScope }}
+    {{- $var := .Files.Get $path }}
+    {{- /* SAFELY render tpl to prevent nil pointer errors */}}
+    {{- tpl $var (dict "Values" (default dict .Values) "Release" .Release "Chart" .Chart "Files" .Files "Capabilities" .Capabilities "Template" .Template "Context" .) | nindent 6 }}
+    {{- end }}
   {{- end }}
 {{- end }}
 {{- end }}
+

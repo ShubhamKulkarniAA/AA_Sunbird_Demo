@@ -5,19 +5,22 @@ metadata:
   name: {{ include "common.names.fullname" . }}
   annotations:
     {{- toYaml .Values.ingress.annotations | nindent 4 }}
-spec: 
+spec:
+  ingressClassName: {{ .Values.ingress.ingressClassName | default "alb" }}
   rules:
     {{- range .Values.ingress.hosts }}
     - host: {{ .host }}
       http:
         paths:
-        {{- range .paths }}
-        - path: {{ . }}
-          backend:
-            service:
-              name: {{ include "common.names.fullname" $ }}
-              port:
-                name: http
-        {{- end }}
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType | default "Prefix" }}
+            backend:
+              service:
+                name: {{ .backend.service.name }}
+                port:
+                  number: {{ .backend.service.port.number }}
+          {{- end }}
     {{- end }}
 {{- end }}
+

@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: content-service-lb
+  namespace: sunbird
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: content
+  ports:
+    - name: http
+      protocol: TCP
+      port: 9000
+      targetPort: 9000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak-service-lb
+  namespace: sunbird
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: keycloak
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assessment-service-lb
+  namespace: sunbird
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: assessment-service
+  ports:
+    - name: http
+      protocol: TCP
+      port: 9000
+      targetPort: 9000

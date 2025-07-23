@@ -1,0 +1,203 @@
+nameOverride: "nginx-public-ingress"
+fullnameOverride: "nginx-public-ingress"
+
+replicaCount: 1
+
+image:
+  repository: sunbirded.azurecr.io/proxy
+  tag: "release-7.0.0_8e6b2db_23"
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # runAsNonRoot: true
+  # runAsUser: 1001
+  # fsGroup: 1001
+
+securityContext: {}
+  # readOnlyRootFilesystem: false
+  # capabilities:
+  #   drop:
+  #   - ALL
+
+service:
+  type: LoadBalancer
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+    - name: https
+      port: 443
+      targetPort: 443
+
+serviceMetrics:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 9145
+      targetPort: 9145
+
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: nginx
+  ingressClassName: nginx
+  hosts:
+    - host: a3da1eb854de945d9836459dfffe9b61-262876081.ap-south-1.elb.amazonaws.com   # Use a domain or external IP (can be IP for testing)
+      paths:
+        - path: /
+          pathType: "Prefix"
+          backend:
+            service:
+              name: content-service   # your service name
+              port:
+                number: 9000         # port your content-service listens on
+
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/backend-protocol: HTTP
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+  ingressClassName: alb
+  hosts:
+    - paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: content-service
+              port:
+                number: 9000
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 100Mi
+  limits:
+    cpu: 1
+    memory: 1G
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 80
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+
+# livenessProbe: {}
+# Example:
+livenessProbe: {}
+  # httpGet:
+  #   path: "/healthz"
+  #   port: 8080
+  # initialDelaySeconds: 5
+  # periodSeconds: 5
+
+# readinessProbe: {}
+# Example:
+readinessProbe: {}
+  # httpGet:
+  #   path: "/ready"
+  #   port: 8080
+  # initialDelaySeconds: 5
+  # periodSeconds: 5
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+configmap:
+  enabled: true
+
+serviceAccount:
+  create: true
+  name: ""
+
+serviceMonitor:
+  enabled: true
+  labels:
+    release: monitoring
+  # interval: 30s
+  # scrapeTimeout: 10s
+  # labels: {} # additional labels e.g. release: prometheus
+  # honorLabels: true
+  # jobLabel: "app.kubernetes.io/name"
+
+# Example values.yaml structure
+initContainers:
+  # - name: init-myservice
+  #   image: busybox:1.28
+  #   command: ['sh', '-c', "until nslookup kubernetes.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local; do echo waiting for myservice; sleep 2; done"]
+  - name: wait-for-keycloak
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args:
+    - "timeout 300 sh -c 'until nc -z keycloak 8080; do echo waiting for keycloak; sleep 10; done'"
+  - name: wait-for-kong
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args:
+    - "timeout 300 sh -c 'until nc -z kong 8000; do echo waiting for kong; sleep 10; done'"
+  - name: wait-for-player
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args:
+    - "timeout 300 sh -c 'until nc -z player 3000; do echo waiting for player; sleep 10; done'"
+
+sidecars: {}
+  # - name: log-reader # Sidecar container
+  #   image: busybox # Use another busybox image
+  #   command: ["/bin/sh"] # Override the default command
+  #   args: ["-c", "tail -f /var/log/app.log"] # Run a shell script that tails the log file
+
+global:
+  domain: "example.com"
+  local_development: false
+  clusterDomain: "cluster.local"
+  # -- configures DNS service name
+  dnsService: "kube-dns"
+  # -- configures DNS service namespace
+  dnsNamespace: "kube-system"
+
+commonAnnotations:
+  reloader.stakater.com/auto: "true"
+  service.beta.kubernetes.io/azure-load-balancer-external: "true" 
+
+merge_domain: "merge.example.com"
+merge_domain_status: true
+proxy_certificate: ""
+proxy_private_key: ""
+
+nginx_per_ip_connection_limit: 400
+
+cache_long_validity: 5m
+cache_medium_validity: 4m
+large_cache_keys: 10m
+medium_cache_keys: 5m
+small_cache_keys: 2m
+large_cache_size: 100m
+medium_cache_size: 50m
+small_cache_size: 20m
+large_cache_inactive: 10m
+medium_cache_inactive: 10m
+small_cache_inactive: 10m
+
+apple_universal_links: '{"applinks":{"apps":[],"details":[{"appID":"123456.dev.sunbird.app","paths":["/explore","/dial/*","/get/dial","/play/content","/play/collection","/learn/course","/explore-course/course","/explore-course","/search","/search/Library","/faq","/profile","/play/quiz","/explore","/learn","/resources"]}]}}'
+
+lets_encrypt_ssl: false

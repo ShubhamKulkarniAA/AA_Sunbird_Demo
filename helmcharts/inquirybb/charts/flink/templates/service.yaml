@@ -27,10 +27,9 @@ spec:
 
 {{- $currentScope := . }}
 {{- range $jobName, $jobData := .Values.flink_jobs }}
-{{- if $jobData.enabled }}
-    {{- /* Include the service template for JobManager */}}
+  {{- if and (kindIs "map" $jobData) (get $jobData "enabled") }}
     {{- include "flink.servicetpl" (dict "jobName" $jobName "component" "jobmanager" "context" $currentScope) }}
     {{- include "flink.servicetpl" (dict "jobName" $jobName "component" "taskmanager" "context" $currentScope) }}
-    {{- /* Include again for another component if needed, with different parameters */}}
+  {{- end }}
 {{- end }}
-{{- end }}
+

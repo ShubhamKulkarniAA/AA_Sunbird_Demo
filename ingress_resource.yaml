@@ -1,0 +1,69 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: content-ingress-test
+  namespace: sunbird
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/backend-protocol: HTTP
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-south-1:339712817291:certificate/f0f99a7b-a8a9-469b-b25a-949f4b10771d
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS-1-2-Ext-2018-06  # Optional, can be changed
+    alb.ingress.kubernetes.io/cors-allow-origin: "http://localhost:4200/"
+spec:
+  ingressClassName: alb
+  rules:
+    - host: sunbird.alignedautomation.com 
+      http:
+        paths:
+          - path: /health
+            pathType: Prefix
+            backend:
+              service:
+                name: content-service
+                port:
+                  number: 9000
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kong
+                port:
+                  number: 8000
+          - path: /auth
+            pathType: Prefix
+            backend:
+              service:
+                name: keycloak
+                port:
+                  number: 8080
+          - path: /content
+            pathType: Prefix
+            backend:
+              service:
+                name: lms-service
+                port:
+                  number: 9000
+          - path: /plugins
+            pathType: Prefix
+            backend:
+              service:
+                name: kong
+                port:
+                  number: 8001
+          - path: /services
+            pathType: Prefix
+            backend:
+              service:
+                name: kong
+                port:
+                  number: 8001
+          - path: /consumers
+            pathType: Prefix
+            backend:
+              service:
+                name: kong
+                port:
+                  number: 8001

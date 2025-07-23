@@ -85,3 +85,5 @@ data:
   {{ $key }}: |-
 {{- $value | trim | nindent 4 }}
 {{- end }}
+---
+

@@ -129,7 +129,7 @@ opa:
 
 
 redis: &redis
-  host: "redis-master"
+  host: "redis-edbb-master"
   port: 6379
 global:
   redis: *redis

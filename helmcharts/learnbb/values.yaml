@@ -33,6 +33,7 @@ postgresql: &postgresql
   - name: "enc-keys"
   - name: "registry"
   - name: "druid_raw"
+  - name: "kong"
 
 elasticsearch: &es
   enabled: true
@@ -106,6 +107,10 @@ cassandra: &cassandra
   commonAnnotations:
     "helm.sh/hook-weight": "-5"
   persistence:
+    enabled: true
+    storageClass: ""   # or leave empty to use the default
+    accessModes:
+      - ReadWriteOnce
     size: 25Gi
 
 zookeeper: &zookeeper
@@ -175,6 +180,8 @@ global:
   keycloak_kid_keys_configmap: keycloak-kids-keys
   keycloak_key_configmap: keycloak-key
   kong_desktop_device_consumer_names_for_opa: '["portal", "desktop"]'
+  serviceAccount:
+    create: false
 
 migration:
   cassandra:

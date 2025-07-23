@@ -1,0 +1,14 @@
+# test-nginx-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-nginx
+  namespace: sunbird
+spec:
+  selector:
+    app: test-nginx
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+

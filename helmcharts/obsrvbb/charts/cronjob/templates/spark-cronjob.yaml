@@ -15,7 +15,7 @@ spec:
             - /bin/sh
             - -c
             - |
-              SPARK_POD=spark-master-0
+              SPARK_POD=spark-obb-master-0
               kubectl exec -it $SPARK_POD -- bash -- /data/analytics/content-snapshot/scripts/run-script.sh USER_CACHE_INDEXER {{ .Values.user_id }} {{ .Values.date }} {{ .Values.populate_anonymous_user }} {{ .Values.refresh_data }}
           restartPolicy: OnFailure
           serviceAccountName: spark-cronjob-sa
@@ -39,7 +39,7 @@ spec:
             - /bin/sh
             - -c
             - |
-              SPARK_POD=spark-master-0
+              SPARK_POD=spark-obb-master-0
               kubectl exec -it $SPARK_POD -- bash -- /data/analytics/content-snapshot/scripts/run-script.sh DRUID_CONTENT_INDEXER {{ .Values.user_id }} {{ .Values.date }} {{ .Values.populate_anonymous_user }} {{ .Values.refresh_data }}
           restartPolicy: OnFailure
           serviceAccountName: spark-cronjob-sa
@@ -63,7 +63,7 @@ spec:
             - /bin/sh
             - -c
             - |
-              SPARK_POD=spark-master-0
+              SPARK_POD=spark-obb-master-0
               kubectl exec -it $SPARK_POD -- bash -- /data/analytics/content-snapshot/scripts/run-script.sh CONTENT_CACHE_INDEXER {{ .Values.user_id }} {{ .Values.date }} {{ .Values.populate_anonymous_user }} {{ .Values.refresh_data }}
           restartPolicy: OnFailure
           serviceAccountName: spark-cronjob-sa
@@ -87,7 +87,7 @@ spec:
             - /bin/sh
             - -c
             - |
-              SPARK_POD=spark-master-0
+              SPARK_POD=spark-obb-master-0
               kubectl exec -it $SPARK_POD -- bash -- /data/analytics/content-snapshot/scripts/run-script.sh DIALCODE_CACHE_INDEXER {{ .Values.user_id }} {{ .Values.date }} {{ .Values.populate_anonymous_user }} {{ .Values.refresh_data }}
           restartPolicy: OnFailure
           serviceAccountName: spark-cronjob-sa
@@ -109,7 +109,7 @@ spec:
             - /bin/sh
             - -c
             - |
-              SPARK_POD=spark-master-0
+              SPARK_POD=spark-obb-master-0
               kubectl exec -it $SPARK_POD -- bash -c "bash -x /data/analytics/scripts/run-job.sh wfs"
           restartPolicy: OnFailure
           serviceAccountName: spark-cronjob-sa
@@ -131,7 +131,7 @@ spec:
             - /bin/sh
             - -c
             - |
-              SPARK_POD=spark-master-0
+              SPARK_POD=spark-obb-master-0
               kubectl exec -it $SPARK_POD -- bash -c "bash -x /data/analytics/scripts/run-job.sh monitor-job-summ"
           restartPolicy: OnFailure
           serviceAccountName: spark-cronjob-sa
@@ -153,7 +153,7 @@ spec:
             - /bin/sh
             - -c
             - |
-              SPARK_POD=spark-master-0
+              SPARK_POD=spark-obb-master-0
               kubectl exec -it $SPARK_POD -- bash -c "export PATH="/usr/local/rvm/bin:$PATH" && export GEM_HOME=/.gem/ruby/2.6.0 && ruby /data/analytics/scripts/submit-all-jobs.rb"
           restartPolicy: OnFailure
           serviceAccountName: spark-cronjob-sa
@@ -175,7 +175,7 @@ spec:
             - /bin/sh
             - -c
             - |
-              SPARK_POD=spark-master-0
+              SPARK_POD=spark-obb-master-0
               kubectl exec -it $SPARK_POD -- bash -c "bash -x /data/analytics/scripts/start-jobmanager.sh"
           restartPolicy: OnFailure
           serviceAccountName: spark-cronjob-sa
@@ -198,7 +198,7 @@ spec:
             - /bin/sh
             - -c
             - |
-              SPARK_POD=spark-master-0
+              SPARK_POD=spark-obb-master-0
               kubectl exec -it $SPARK_POD -- bash -c "bash -x /data/analytics/scripts/run-job.sh course-batch-status-updater"
           restartPolicy: OnFailure
           serviceAccountName: spark-cronjob-sa
@@ -222,7 +222,7 @@ spec:
             - /bin/sh
             - -c
             - |
-              SPARK_POD=spark-master-0
+              SPARK_POD=spark-obb-master-0
               kubectl exec -it $SPARK_POD -- bash -c "bash -x /data/analytics/scripts/run-job.sh admin-user-reports"
           restartPolicy: OnFailure
           serviceAccountName: spark-cronjob-sa
@@ -245,7 +245,7 @@ spec:
             - /bin/sh
             - -c
             - |
-              SPARK_POD=spark-master-0
+              SPARK_POD=spark-obb-master-0
               kubectl exec -it $SPARK_POD -- bash -c "bash -x /data/analytics/scripts/run-job.sh admin-geo-reports"
           restartPolicy: OnFailure
           serviceAccountName: spark-cronjob-sa
@@ -268,7 +268,7 @@ spec:
             - /bin/sh
             - -c
             - |
-              SPARK_POD=spark-master-0
+              SPARK_POD=spark-obb-master-0
               kubectl exec -it $SPARK_POD -- bash -c "bash -x /data/analytics/scripts/run-job.sh progress-exhaust"
           restartPolicy: OnFailure
           serviceAccountName: spark-cronjob-sa
@@ -290,7 +290,7 @@ spec:
             - /bin/sh
             - -c
             - |
-              SPARK_POD=spark-master-0
+              SPARK_POD=spark-obb-master-0
               kubectl exec -it $SPARK_POD -- bash -c "bash -x /data/analytics/scripts/run-job.sh response-exhaust"
           restartPolicy: OnFailure
           serviceAccountName: spark-cronjob-sa
@@ -312,7 +312,7 @@ spec:
             - /bin/sh
             - -c
             - |
-              SPARK_POD=spark-master-0
+              SPARK_POD=spark-obb-master-0
               kubectl exec -it $SPARK_POD -- bash -c "bash -x /data/analytics/scripts/run-job.sh cassandra-migration"
           restartPolicy: OnFailure
           serviceAccountName: spark-cronjob-sa
@@ -334,7 +334,7 @@ spec:
             - /bin/sh
             - -c
             - |
-              SPARK_POD=spark-master-0
+              SPARK_POD=spark-obb-master-0
               kubectl exec -it $SPARK_POD -- bash -c "bash -x /data/analytics/scripts/run-job.sh userinfo-exhaust"
           restartPolicy: OnFailure
           serviceAccountName: spark-cronjob-sa
@@ -356,7 +356,7 @@ spec:
             - /bin/sh
             - -c
             - |
-              SPARK_POD=spark-master-0
+              SPARK_POD=spark-obb-master-0
               kubectl exec -it $SPARK_POD -- bash -c "bash -x /data/analytics/scripts/run-job.sh collection-summary-report-v2"
           restartPolicy: OnFailure
           serviceAccountName: spark-cronjob-sa
@@ -386,7 +386,7 @@ spec:
             - /bin/sh
             - -c
             - |
-              SPARK_POD=spark-master-0
+              SPARK_POD=spark-obb-master-0
               kubectl exec -it $SPARK_POD -- bash -c "python3 /data/analytics/scripts/druid-report-processor.py"
             env:
             - name: SPARK_HOME

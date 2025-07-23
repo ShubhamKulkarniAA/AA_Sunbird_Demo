@@ -1,3 +1,4 @@
+
 # Local to hold the base URL for your S3 bucket where schemas will be uploaded
 locals {
   cloud_storage_schema_url = "https://${var.bucket_name}.s3.amazonaws.com"

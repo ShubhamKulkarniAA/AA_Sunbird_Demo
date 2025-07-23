@@ -1,10 +1,10 @@
 cassandra:
-  enabled: false
+  enabled: true
 elasticsearch:
-  enabled: false
+  enabled: true
 kafka:
-  enabled: false
+  enabled: true
 redis:
-  enabled: false
+  enabled: true
 neo4j:
-  enabled: false
+  enabled: true

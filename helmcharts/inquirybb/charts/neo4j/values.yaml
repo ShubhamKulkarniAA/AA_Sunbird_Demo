@@ -85,7 +85,7 @@ neo4j:
     sharedData: /var/lib/neo4j/logs/plugins/txn-handler
     neo4jData: "/data"
   pvc:
-    claimName: neo4j-claim
+    claimName: neo4j-ibb-claim
     accessModes: ReadWriteOnce
     annotations: "keep"
     resources:
@@ -98,7 +98,7 @@ logstash:
   image: logstash:6.8.21
   imagePullPolicy: Always
   configmap:
-    name: logstash-config
+    name: logstash-config-ibb
   mountPath:
     name: logstash.conf
     sharedData: /txn-handler

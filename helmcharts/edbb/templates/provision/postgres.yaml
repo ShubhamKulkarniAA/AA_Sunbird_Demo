@@ -35,7 +35,9 @@ spec:
               export PGHOST={{ .Values.global.postgresql.host }}
               export PGPORT={{ .Values.global.postgresql.port }}
               export PGUSER={{ .Values.global.postgresql.postgresqlUsername }}
-              {{- range .Values.global.postgresql.databases }}
+              export PGPASSWORD="Sunbird123"
+              #export PGPASSWORD={{.Values.global.postgresql.postgresqlPassword}}
+              {{- range .Values.postgresql.databases }}
               # Check if the database exists
               if ! psql -lqt | cut -d \| -f 1 | grep -qw {{ .name }}; then
                 # Database doesn't exist, create it
@@ -46,11 +48,11 @@ spec:
               {{- end }}
 
               echo "PostgreSQL setup completed."
-          env:
-            - name: PGPASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: postgresql
-                  key: postgresql-password
+         # env:
+         #  - name: PGPASSWORD
+         #     valueFrom:
+         #       secretKeyRef:
+         #         name: postgresql
+         #         key: postgresql-password
       backoffLimit: 30
 

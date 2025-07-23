@@ -15,7 +15,7 @@ global:
   ##   - myRegistryKeySecretName
   ##
   imagePullSecrets: []
-  storageClass: ""
+  storageClass: "gp2"
 
 ## @section Common parameters
 ##
@@ -1226,7 +1226,17 @@ metrics:
     ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
     ## Note: metrics.kafka.podAffinityPreset, metrics.kafka.podAntiAffinityPreset, and metrics.kafka.nodeAffinityPreset will be ignored when it's set
     ##
-    affinity: {}
+    ##affinity: {}
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/zone
+                operator: In
+                values:
+                  - ap-south-1a  # Replace with actual zone of your node (use `kubectl get nodes -o wide`)
+
     ## @param metrics.kafka.nodeSelector Node labels for pod assignment
     ## Ref: https://kubernetes.io/docs/user-guide/node-selection/
     ##

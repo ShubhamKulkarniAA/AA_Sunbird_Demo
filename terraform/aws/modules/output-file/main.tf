@@ -1,3 +1,4 @@
+
 locals {
   global_values_cloud_file = "${var.base_location}/../global-cloud-values.yaml"
 }

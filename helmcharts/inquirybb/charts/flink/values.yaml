@@ -12,15 +12,15 @@ image:
 podAnnotations: {}
 
 podSecurityContext:
-  # runAsNonRoot: true
+  #runAsNonRoot: true
   runAsUser: 0
   fsGroup: 0
 
 securityContext: {}
-  # readOnlyRootFilesystem: false
-  # capabilities:
-  #   drop:
-  #   - ALL
+  #readOnlyRootFilesystem: false
+  #apabilities:
+  #drop:
+  #  - ALL
 
 service:
   type: ClusterIP
@@ -57,7 +57,6 @@ autoscaling:
           type: Utilization
           averageUtilization: 80
 
-
 nodeSelector: {}
 tolerations: []
 affinity: {}
@@ -67,7 +66,8 @@ configmap:
   mountPath: /config
 
 serviceAccount:
-  create: false
+  create: true
+  name: flink
 
 serviceMonitor:
   enabled: false
@@ -82,7 +82,6 @@ sidecars: {}
 
 opa:
   enabled: false
-
 
 jobmanager:
   rpc_port: 6123
@@ -113,9 +112,15 @@ restart_attempts: 3
 restart_delay: 30000 # in milli-seconds
 producer_max_request_size: 1572864
 
+### Parallelism Configuration
+ingest_router_consumer_parallelism: 1
+ingest_router_operators_parallelism: 1
+raw_router_consumer_parallelism: 1
+raw_router_downstream_parallelism: 1
+
 ### QuestionSet Publish Config
 master_category_validation_enabled: "Yes"
-
+user_pii_topic: "{{ .Values.user_pii_updater_kafka_topic_name }}"
 inquiry_assessment_publish_kafka_topic_name: "{{ .Values.global.env }}.assessment.publish.request"
 inquiry_assessment_post_publish_kafka_topic_name: "{{ .Values.global.env }}.assessment.postpublish.request"
 inquiry_assessment_publish_group: "{{ .Values.global.env }}-questionset-publish-group"
@@ -145,7 +150,6 @@ user_pii_replacement_value: "Deleted User"
 user_org_service_base_url: "http://userorg-service:9000"
 email_notification_subject: "User Account Deletion Notification"
 email_notification_regards: "Team"
-
 
 log4j_console_properties: |
   # This affects logging for both user code and Flink
@@ -177,15 +181,19 @@ log4j_console_properties: |
   # Suppress the irrelevant (wrong) warnings from the Netty channel handler
   logger.netty.name = org.apache.flink.shaded.akka.org.jboss.netty.channel.DefaultChannelPipeline
   logger.netty.level = OFF
-
+                                                                                                                                                            
 base_config: |
   kafka {
-      broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
-      zookeeper = "{{ .Values.global.zookeeper.host }}:{{ .Values.global.zookeeper.port }}"
-      producer {
-        max-request-size = {{ .Values.producer_max_request_size }}
-      }
-      input {
+    broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+    producer.broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+    consumer.broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+    zookeeper = "{{ .Values.global.zookeeper.host }}:{{ .Values.global.zookeeper.port }}"
+    producer {
+      max-request-size = {{ .Values.producer_max_request_size }}
+      batch.size = 98304
+      linger.ms = 10
+    }
+    input {
       user_pii_topic = "{{ .Values.global.env }}.delete.user.job.request"
       ownership_transfer_topic = "{{ .Values.global.env }}.user.ownership.transfer"
     }
@@ -193,99 +201,197 @@ base_config: |
   }
 
   job {
-    env = "{{ .Values.global.env }}"
-    enable.distributed.checkpointing = true
+        env = "{{ .Values.global.env }}"
+        enable.distributed.checkpointing = true
 
-    {{- if eq "oci" .Values.global.checkpoint_store_type }}
-    statebackend {
-      base.url = "s3://{{ .Values.global.private_container_name }}/checkpoint"
-    }
+        {{- if eq "oci" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "s3://{{ .Values.global.public_container_name }}/checkpoint"
+        }
+        {{- else if eq "azure" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "wasbs://{{ .Values.global.public_container_name }}@{{ .Values.global.object_storage_endpoint }}/checkpoint"
+        }
+        {{- else if eq "gcs" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "gs://{{ .Values.global.public_container_name }}/checkpoint"
+        }
+        {{- else }}
+        statebackend {
+          base.url = "file:///tmp/flink-checkpoints"
+        }
+        {{- end }}
 
-    {{- else if eq "azure" .Values.global.checkpoint_store_type }}
-    statebackend {
-      base.url = "wasbs://{{ .Values.global.private_container_name }}@{{ .Values.global.object_storage_endpoint }}/checkpoint"
-    }
-
-    {{- else if eq "gcs" .Values.global.checkpoint_store_type }}
-    statebackend {
-      base.url = "gs://{{ .Values.global.private_container_name }}/checkpoint"
-    }
-    {{- else }}
-    # No valid checkpoint_store_type configured, skipping statebackend.
-    {{- end }}
+        checkpointing.interval = {{ .Values.checkpoint_interval }}
+        checkpointing.pause.between.seconds = {{ .Values.checkpoint_pause_between_seconds }}
+        checkpointing.compression.enabled = {{ .Values.checkpoint_compression_enabled }}
+        restart-strategy.attempts = {{ .Values.restart_attempts }}
+        restart-strategy.delay = {{ .Values.restart_delay }}
   }
-  
-    task {
-      parallelism = 1
-      consumer.parallelism = 1
-      checkpointing.compressed = {{ .Values.checkpoint_compression_enabled }}
-      checkpointing.interval = {{ .Values.checkpoint_interval }}
-      checkpointing.pause.between.seconds = {{ .Values.checkpoint_pause_between_seconds }}
-      restart-strategy.attempts = {{ .Values.restart_attempts }}
-      restart-strategy.delay = {{ .Values.restart_delay }} # in milli-seconds
+
+  task {
+    parallelism = 1
+    consumer.parallelism = 1
+    checkpointing.compressed = {{ .Values.checkpoint_compression_enabled }}
+    checkpointing.interval = {{ .Values.checkpoint_interval }}
+    checkpointing.pause.between.seconds = {{ .Values.checkpoint_pause_between_seconds }}
+    restart-strategy.attempts = {{ .Values.restart_attempts }}
+    restart-strategy.delay = {{ .Values.restart_delay }}
+  }
+
+  redis {
+    host = {{ .Values.global.redis.host }}
+    port = {{ .Values.global.redis.port }}
+  }
+
+  lms-cassandra {
+    host = "{{ .Values.global.cassandra.host }}"
+    port = {{ .Values.global.cassandra.port }}
+  }
+
+  neo4j {
+    routePath = "bolt://{{.Values.global.neo4j.host}}:{{.Values.global.neo4j.port}}"
+    graph = "domain"
+  }
+
+  es {
+    basePath = "{{.Values.global.elasticsearch.host}}:{{.Values.global.elasticsearch.port}}"
+  }
+
+  schema {
+    basePath = "{{- include "common.tplvalues.render" (dict "value" .Values.global.schema.base_path "context" $) }}"
+    supportedVersion = {
+      itemset = "2.0"
     }
-    redis {
-      host = {{ .Values.global.redis.host }}
-      port = {{ .Values.global.redis.port }}
-    }
-    lms-cassandra {
-      host = "{{ .Values.global.cassandra.host }}"
-      port = {{ .Values.global.cassandra.port }}
-    }
-    neo4j {
-      routePath = "bolt://{{.Values.global.neo4j.host}}:{{.Values.global.neo4j.port}}"
-      graph = "domain"
-    }
-    es {
-        basePath = "{{.Values.global.elasticsearch.host}}:{{.Values.global.elasticsearch.port}}"
-    }
-    schema {
-      basePath = "{{- include "common.tplvalues.render" (dict "value" .Values.global.schema.base_path "context" $) }}"
-      supportedVersion = {
-        itemset = "2.0"
-      }
-    }
+  }
+
 flink_jobs:
   async-questionset-publish:
     enabled: true
     config: |+
-      include file("/data/flink/conf/base-config.conf")
+      include file("file:///data/flink/conf/base-config.conf")
+      
+      job {
+        env = "{{ .Values.global.env }}"
+        enable.distributed.checkpointing = true
+
+        {{- if eq "oci" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "s3://{{ .Values.global.public_container_name }}/checkpoint"
+        }
+        {{- else if eq "azure" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "wasbs://{{ .Values.global.public_container_name }}@{{ .Values.global.object_storage_endpoint }}/checkpoint"
+        }
+        {{- else if eq "gcs" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "gs://{{ .Values.global.public_container_name }}/checkpoint"
+        }
+        {{- else }}
+        statebackend {
+          base.url = "file:///tmp/flink-checkpoints"
+        }
+        {{- end }}
+
+        checkpointing.interval = {{ .Values.checkpoint_interval }}
+        checkpointing.pause.between.seconds = {{ .Values.checkpoint_pause_between_seconds }}
+        checkpointing.compression.enabled = {{ .Values.checkpoint_compression_enabled }}
+        restart-strategy.attempts = {{ .Values.restart_attempts }}
+        restart-strategy.delay = {{ .Values.restart_delay }}
+      }
+
       kafka {
-        input.topic = {{- include "common.tplvalues.render" (dict "value" .Values.inquiry_assessment_publish_kafka_topic_name "context" $) }}
-        post_publish.topic = {{- include "common.tplvalues.render" (dict "value" .Values.inquiry_assessment_post_publish_kafka_topic_name "context" $) }}
-        groupId = {{- include "common.tplvalues.render" (dict "value" .Values.inquiry_assessment_publish_group "context" $) }}
+        broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+        producer.broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+        consumer.broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+        zookeeper = "{{ .Values.global.zookeeper.host }}:{{ .Values.global.zookeeper.port }}"
+        
+        input.topic = {{ .Values.inquiry_assessment_publish_kafka_topic_name }}
+        post_publish.topic = {{ .Values.inquiry_assessment_post_publish_kafka_topic_name }}
+        groupId = {{ .Values.inquiry_assessment_publish_group }}
+        
+        producer {
+          max-request-size = {{ .Values.producer_max_request_size }}
+          batch.size = 98304
+          linger.ms = 10
+        }
       }
+
       task {
-        consumer.parallelism = 1
         parallelism = 1
+        consumer.parallelism = {{ .Values.ingest_router_consumer_parallelism }}
+        downstream.operators.parallelism = {{ .Values.ingest_router_operators_parallelism }}
         router.parallelism = 1
+        checkpointing.compressed = true
+        checkpointing.interval = 60000
+        checkpointing.pause.between.seconds = 5000
+        restart-strategy.attempts = 3
+        restart-strategy.delay = 30000
+        raw {
+          consumer.parallelism = {{ .Values.raw_router_consumer_parallelism }}
+          downstream.operators.parallelism = {{ .Values.raw_router_downstream_parallelism }}
+        }
       }
+
+      redisdb.connection.timeout = 30000
+      redis {
+        host = "{{ .Values.global.redis.host }}"
+        port = {{ .Values.global.redis.port }}
+        database {
+          default.id = 0
+        }
+      }
+      
+      redis-meta {
+        host = "{{ .Values.metadata2_redis_host | default .Values.global.redis.host }}"
+        port = {{ .Values.metadata2_redis_port | default .Values.global.redis.port }}
+        database {
+          default.id = 0
+        }
+      }
+      
+      lms-cassandra {
+        host = "{{ .Values.global.cassandra.host }}"
+        port = "{{ .Values.global.cassandra.port }}"
+        keyspace = "{{ .Values.middleware_cassandra_keyspace }}"
+      }
+      
       question {
-        keyspace = {{- include "common.tplvalues.render" (dict "value" .Values.question_keyspace_name "context" $) }}
+        keyspace = {{ .Values.question_keyspace_name }}
         table = "question_data"
       }
+      
       questionset {
-        keyspace = {{- include "common.tplvalues.render" (dict "value" .Values.hierarchy_keyspace_name "context" $) }}
+        keyspace = {{ .Values.hierarchy_keyspace_name }}
         table = "questionset_hierarchy"
       }
+      
       print_service.base_url = "{{ .Values.kp_print_service_base_url }}"
-      #Cloud Storage Config
+      
       cloud_storage_type: "{{ .Values.global.checkpoint_store_type }}"
       cloud_storage_key: "{{ .Values.global.cloud_storage_access_key }}"  
       cloud_storage_secret: "{{ .Values.global.cloud_storage_secret_key }}" 
       cloud_storage_endpoint: ""
       cloud_storage_container: "{{ .Values.global.public_container_name }}"
 
-      master.category.validation.enabled ="{{ .Values.master_category_validation_enabled }}"
+      master.category.validation.enabled = "{{ .Values.master_category_validation_enabled }}"
+      
       cloudstorage {
-        metadata.replace_absolute_path={{ .Values.cloudstorage_replace_absolute_path | default false }}
-        metadata.list= {{ .Values.cloudstorage_metadata_list }}
-        relative_path_prefix="{{ .Values.cloudstorage_relative_path_prefix }}"
+        metadata.replace_absolute_path = {{ .Values.cloudstorage_replace_absolute_path | default false }}
+        metadata.list = {{ .Values.cloudstorage_metadata_list }}
+        relative_path_prefix = "{{ .Values.cloudstorage_relative_path_prefix }}"
         read_base_path="{{- include "common.tplvalues.render" (dict "value" .Values.cloudstorage_base_path "context" $) }}"
         write_base_path= {{- include "common.tplvalues.render" (dict "value" .Values.valid_cloudstorage_base_urls "context" $) }}
+        #read_base_path = "{{ .Values.cloudstorage_base_path }}"
+        #write_base_path = {{ .Values.valid_cloudstorage_base_urls }}
       }
-      schema.basePath="https://{{ .Values.global.object_storage_endpoint }}/{{ .Values.global.public_container_name }}/schemas/local"
-
+      
+      schema {
+        basePath = "https://{{ .Values.global.object_storage_endpoint }}/{{ .Values.global.public_container_name }}/schemas/local"
+        supportedVersion {
+          itemset = "2.0"
+        }
+      }
     flink-conf: |+
       jobmanager.memory.flink.size: 1024m
       taskmanager.memory.flink.size: 1024m
@@ -294,48 +400,139 @@ flink_jobs:
       jobmanager.execution.failover-strategy: region
       taskmanager.memory.network.fraction: 0.1
     job_classname: org.sunbird.job.questionset.task.QuestionSetPublishStreamTask
-  
+
   questionset-republish:
     enabled: true
     config: |+
-      include file("/data/flink/conf/base-config.conf")
+      include file("file:///data/flink/conf/base-config.conf")
+      
+      job {
+        env = "{{ .Values.global.env }}"
+        enable.distributed.checkpointing = true
+
+        {{- if eq "oci" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "s3://{{ .Values.global.public_container_name }}/checkpoint"
+        }
+        {{- else if eq "azure" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "wasbs://{{ .Values.global.public_container_name }}@{{ .Values.global.object_storage_endpoint }}/checkpoint"
+        }
+        {{- else if eq "gcs" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "gs://{{ .Values.global.public_container_name }}/checkpoint"
+        }
+        {{- else }}
+        statebackend {
+          base.url = "file:///tmp/flink-checkpoints"
+        }
+        {{- end }}
+
+        checkpointing.interval = {{ .Values.checkpoint_interval }}
+        checkpointing.pause.between.seconds = {{ .Values.checkpoint_pause_between_seconds }}
+        checkpointing.compression.enabled = {{ .Values.checkpoint_compression_enabled }}
+        restart-strategy.attempts = {{ .Values.restart_attempts }}
+        restart-strategy.delay = {{ .Values.restart_delay }}
+      }
+
       kafka {
-        input.topic = {{- include "common.tplvalues.render" (dict "value" .Values.inquiry_assessment_republish_kafka_topic_name "context" $) }}
-        post_publish.topic = {{- include "common.tplvalues.render" (dict "value" .Values.inquiry_assessment_post_publish_kafka_topic_name "context" $) }}
-        groupId = {{- include "common.tplvalues.render" (dict "value" .Values.inquiry_assessment_republish_group "context" $) }}
+        broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+        producer.broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+        consumer.broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+        zookeeper = "{{ .Values.global.zookeeper.host }}:{{ .Values.global.zookeeper.port }}"
+        
+        input.topic = "demo.assessment.republish.request"
+        post_publish.topic = "{{ .Values.inquiry_assessment_post_publish_kafka_topic_name }}"
+        groupId = "{{ .Values.inquiry_assessment_republish_group }}"
+        
+        producer {
+          max-request-size = {{ .Values.producer_max_request_size }}
+          batch.size = 98304
+          linger.ms = 10
+        }
       }
+
       task {
-        consumer.parallelism = 1
         parallelism = 1
+        consumer.parallelism = {{ .Values.ingest_router_consumer_parallelism }}
+        downstream.operators.parallelism = {{ .Values.ingest_router_operators_parallelism }}
         router.parallelism = 1
+        checkpointing.compressed = true
+        checkpointing.interval = 60000
+        checkpointing.pause.between.seconds = 5000
+        restart-strategy.attempts = 3
+        restart-strategy.delay = 30000
+        raw {
+          consumer.parallelism = {{ .Values.raw_router_consumer_parallelism }}
+          downstream.operators.parallelism = {{ .Values.raw_router_downstream_parallelism }}
+        }
       }
+
+      redisdb.connection.timeout = 30000
+      redis {
+        host = "{{ .Values.global.redis.host }}"
+        port = {{ .Values.global.redis.port }}
+        database {
+          default.id = 0
+        }
+      }
+      
+      redis-meta {
+        host = "{{ .Values.metadata2_redis_host | default .Values.global.redis.host }}"
+        port = {{ .Values.metadata2_redis_port | default .Values.global.redis.port }}
+        database {
+          default.id = 0
+        }
+      }
+      
+      lms-cassandra {
+        host = "{{ .Values.global.cassandra.host }}"
+        port = "{{ .Values.global.cassandra.port }}"
+        keyspace = "{{ .Values.middleware_cassandra_keyspace }}"
+      }
+
+      neo4j {
+        routePath = "bolt://{{ .Values.global.neo4j.host }}:{{ .Values.global.neo4j.port }}"
+        graph = "domain"
+      }
+
+      
       question {
-        keyspace = {{- include "common.tplvalues.render" (dict "value" .Values.question_keyspace_name "context" $) }}
+        keyspace = "{{ .Values.question_keyspace_name }}"
         table = "question_data"
       }
+      
       questionset {
-        keyspace = {{- include "common.tplvalues.render" (dict "value" .Values.hierarchy_keyspace_name "context" $) }}
+        keyspace = "{{ .Values.hierarchy_keyspace_name }}"
         table = "questionset_hierarchy"
       }
+      
       print_service.base_url = "{{ .Values.kp_print_service_base_url }}"
-      #Cloud Storage Config
+      
       cloud_storage_type: "{{ .Values.global.checkpoint_store_type }}"
       cloud_storage_key: "{{ .Values.global.cloud_storage_access_key }}"
       cloud_storage_secret: "{{ .Values.global.cloud_storage_secret_key }}"
-      cloud_storage_endpoint: ""
+      cloud_storage_endpoint: "{{ .Values.global.object_storage_endpoint }}"
       cloud_storage_container: "{{ .Values.global.public_container_name }}"
       
-      master.category.validation.enabled ="{{ .Values.master_category_validation_enabled }}"
+      master.category.validation.enabled = "{{ .Values.master_category_validation_enabled }}"
+      
       cloudstorage {
-        metadata.replace_absolute_path={{ .Values.cloudstorage_replace_absolute_path | default false }}
-        metadata.list={{ .Values.cloudstorage_metadata_list }}
-        relative_path_prefix="{{ .Values.cloudstorage_relative_path_prefix }}"
+        metadata.replace_absolute_path = {{ .Values.cloudstorage_replace_absolute_path | default false }}
+        metadata.list = {{ .Values.cloudstorage_metadata_list }}
+        relative_path_prefix = "{{ .Values.cloudstorage_relative_path_prefix }}"
         read_base_path="{{- include "common.tplvalues.render" (dict "value" .Values.cloudstorage_base_path "context" $) }}"
         write_base_path= {{- include "common.tplvalues.render" (dict "value" .Values.valid_cloudstorage_base_urls "context" $) }}
+        #read_base_path = "{{ .Values.cloudstorage_base_path }}"
+        #write_base_path = {{ .Values.valid_cloudstorage_base_urls }}
       }
-      schema.basePath="https://{{ .Values.global.object_storage_endpoint }}/{{ .Values.global.public_container_name }}/schemas/local"
-
-     
+      
+      schema {
+        basePath = "https://{{ .Values.global.object_storage_endpoint }}/{{ .Values.global.public_container_name }}/schemas/local"
+        supportedVersion {
+          itemset = "2.0"
+        }
+      }
     flink-conf: |+
       jobmanager.memory.flink.size: 1024m
       taskmanager.memory.flink.size: 1024m
@@ -343,33 +540,123 @@ flink_jobs:
       parallelism.default: 1
       jobmanager.execution.failover-strategy: region
       taskmanager.memory.network.fraction: 0.1
-    job_classname: org.sunbird.job.questionset.republish.task.QuestionSetRePublishStreamTask  
-  
+    job_classname: org.sunbird.job.questionset.republish.task.QuestionSetRePublishStreamTask
+
   user-pii-data-updater:
     enabled: true
     config: |+
-      include file("/data/flink/conf/base-config.conf")
+      include file("file:///data/flink/conf/base-config.conf")
+      job {
+        env = "{{ .Values.global.env }}"
+        enable.distributed.checkpointing = true
+
+        {{- if eq "oci" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "s3://{{ .Values.global.public_container_name }}/checkpoint"
+        }
+        {{- else if eq "azure" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "wasbs://{{ .Values.global.public_container_name }}@{{ .Values.global.object_storage_endpoint }}/checkpoint"
+        }
+        {{- else if eq "gcs" .Values.global.checkpoint_store_type }}
+        statebackend {
+          base.url = "gs://{{ .Values.global.public_container_name }}/checkpoint"
+        }
+        {{- else }}
+        statebackend {
+          base.url = "file:///tmp/flink-checkpoints"
+        }
+        {{- end }}
+
+        checkpointing.interval = {{ .Values.checkpoint_interval }}
+        checkpointing.pause.between.seconds = {{ .Values.checkpoint_pause_between_seconds }}
+        checkpointing.compression.enabled = {{ .Values.checkpoint_compression_enabled }}
+        restart-strategy.attempts = {{ .Values.restart_attempts }}
+        restart-strategy.delay = {{ .Values.restart_delay }}
+      }
+
       kafka {
-        input.topic = "{{- include "common.tplvalues.render" (dict "value" .Values.user_pii_updater_kafka_topic_name "context" $) }}"
-        groupId = "{{- include "common.tplvalues.render" (dict "value" .Values.user_pii_updater_group "context" $) }}"
-      }
-      task {
-        consumer.parallelism = 1
-        parallelism = 1
-        router.parallelism = 1
-      }
-      target_object_types={{ .Values.user_pii_target_object_types }}
-      user_pii_replacement_value="{{ .Values.user_pii_replacement_value }}"
-      admin_email_notification_enable=true
-      userorg_service_base_url="{{- include "common.tplvalues.render" (dict "value" .Values.user_org_service_base_url "context" $) }}"
-      notification {
-        email {
-          subject: "{{ .Values.email_notification_subject }}",
-          regards: "{{ .Values.email_notification_regards }}"
+        broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+        producer.broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+        consumer.broker-servers = "{{ .Values.global.kafka.host }}:{{ .Values.global.kafka.port }}"
+        zookeeper = "{{ .Values.global.zookeeper.host }}:{{ .Values.global.zookeeper.port }}"
+        
+        input.topic = "{{ .Values.user_pii_updater_kafka_topic_name }}"
+        groupId = "{{ .Values.user_pii_updater_group }}"
+        
+        producer {
+          max-request-size = {{ .Values.producer_max_request_size }}
+          batch.size = 98304
+          linger.ms = 10
+        }
+        input {
+          user_pii_topic = "{{ .Values.global.env }}.delete.user.job.request"
+          ownership_transfer_topic = "{{ .Values.global.env }}.user.ownership.transfer"
         }
       }
-      schema.basePath="https://{{ .Values.global.object_storage_endpoint }}/{{ .Values.global.public_container_name }}/schemas/local"
- 
+
+      task {
+        parallelism = 1
+        consumer.parallelism = {{ .Values.ingest_router_consumer_parallelism }}
+        downstream.operators.parallelism = {{ .Values.ingest_router_operators_parallelism }}
+        router.parallelism = 1
+        checkpointing.compressed = true
+        checkpointing.interval = 60000
+        checkpointing.pause.between.seconds = 5000
+        restart-strategy.attempts = 3
+        restart-strategy.delay = 30000
+        raw {
+          consumer.parallelism = {{ .Values.raw_router_consumer_parallelism }}
+          downstream.operators.parallelism = {{ .Values.raw_router_downstream_parallelism }}
+        }
+      }
+
+      redisdb.connection.timeout = 30000
+      redis {
+        host = "{{ .Values.global.redis.host }}"
+        port = {{ .Values.global.redis.port }}
+        database {
+          default.id = 0
+        }
+      }
+      
+      redis-meta {
+        host = "{{ .Values.metadata2_redis_host | default .Values.global.redis.host }}"
+        port = {{ .Values.metadata2_redis_port | default .Values.global.redis.port }}
+        database {
+          default.id = 0
+        }
+      }
+
+      neo4j {
+        routePath = "bolt://{{ .Values.global.neo4j.host }}:{{ .Values.global.neo4j.port }}"
+        graph = "domain"
+      }
+      
+      lms-cassandra {
+        host = "{{ .Values.global.cassandra.host }}"
+        port = "{{ .Values.global.cassandra.port }}"
+        keyspace = "{{ .Values.middleware_cassandra_keyspace }}"
+      }
+      
+      target_object_types = {{ .Values.user_pii_target_object_types }}
+      user_pii_replacement_value = "{{ .Values.user_pii_replacement_value }}"
+      admin_email_notification_enable = true
+      userorg_service_base_url = "{{ .Values.user_org_service_base_url }}"
+      
+      notification {
+        email {
+          subject = "{{ .Values.email_notification_subject }}"
+          regards = "{{ .Values.email_notification_regards }}"
+        }
+      }
+      
+      schema {
+        basePath = "https://{{ .Values.global.object_storage_endpoint }}/{{ .Values.global.public_container_name }}/schemas/local"
+        supportedVersion {
+          itemset = "2.0"
+        }
+      }
     flink-conf: |+
       jobmanager.memory.flink.size: 1024m
       taskmanager.memory.flink.size: 1024m

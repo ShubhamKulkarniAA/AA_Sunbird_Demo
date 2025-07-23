@@ -17,10 +17,15 @@ commonAnnotations:
 commonLabels: {}
 
 livenessProbe:
-  exec:
-    command: ["/bin/sh", "-c", "! test -f /var/lib/neo4j/data/databases/graph.db/store_lock"]
+  httpGet:
+    path: /
+    port: 7474
+  #exec:
+  #command: ["/bin/sh", "-c", "! test -f /var/lib/neo4j/data/databases/graph.db/store_lock"]
   initialDelaySeconds: 30
-  periodSeconds: 60
+  periodSeconds: 30
+  #timeoutSeconds: 5
+  #failureThreshold: 5
 
 readinessProbe: {}
 
